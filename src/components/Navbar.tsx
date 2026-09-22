@@ -3,6 +3,9 @@ import {
   AlertTriangle,
   Bell,
   Clock,
+  KeyRound,
+  Lock,
+  LogOut,
   Menu,
   QrCode,
   RefreshCw,
@@ -27,6 +30,8 @@ export const Navbar: React.FC = () => {
     isOnline,
     syncStatus,
     settings,
+    lockSession,
+    logout,
   } = useApp();
 
   const [time, setTime] = useState<string>('');
@@ -71,6 +76,7 @@ export const Navbar: React.FC = () => {
     transactions: { title: 'Riwayat Transaksi', subtitle: 'Daftar struk penjualan, cetak ulang & pembatalan void' },
     customers: { title: 'Data Pelanggan & Pasien', subtitle: 'Riwayat kunjungan, catatan alergi obat & loyalitas' },
     reports: { title: 'Laporan Lengkap & Analisis', subtitle: 'Laporan omzet, laba rugi akuntansi, ekspor PDF/Excel' },
+    auth: { title: 'Autentikasi & Kontrol Sesi', subtitle: 'Login shift kasir, wewenang peran, reset PIN & penguncian layar' },
     cashiers: { title: 'Manajemen Kasir & Audit Log', subtitle: 'Hak akses kasir, shift kerja & riwayat audit anti manipulasi' },
     settings: { title: 'Pengaturan Apotek', subtitle: 'Identitas apotek, nomor SIA/SIPA, printer struk thermal & pajak' },
   };
@@ -103,6 +109,17 @@ export const Navbar: React.FC = () => {
 
         {/* Right: Actions & Status */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Quick Lock POS Button */}
+          <button
+            id="btn-navbar-quick-lock"
+            onClick={lockSession}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 text-xs font-semibold transition-all shadow-xs"
+            title="Kunci Layar (Lock Screen POS)"
+          >
+            <Lock className="w-3.5 h-3.5 text-amber-600" />
+            <span className="hidden md:inline">Kunci Layar</span>
+          </button>
+
           {/* Quick Scan Barcode Button */}
           <button
             id="btn-quick-barcode-scanner"
@@ -310,15 +327,48 @@ export const Navbar: React.FC = () => {
                   ))}
                 </div>
 
-                <div className="px-3 pt-2 border-t border-slate-100">
+                <div className="px-3 pt-2 border-t border-slate-100 space-y-1">
+                  <button
+                    onClick={() => {
+                      setActiveTab('auth');
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full text-left text-xs py-1.5 px-2.5 rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 font-bold flex items-center gap-2 transition-colors"
+                  >
+                    <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Menu Autentikasi & Shift</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      lockSession();
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full text-left text-xs py-1.5 px-2.5 rounded-lg text-amber-800 hover:bg-amber-50 font-medium flex items-center gap-2 transition-colors"
+                  >
+                    <Lock className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Kunci Layar POS</span>
+                  </button>
+
                   <button
                     onClick={() => {
                       setActiveTab('settings');
                       setShowUserMenu(false);
                     }}
-                    className="w-full text-center text-xs py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 font-medium"
+                    className="w-full text-left text-xs py-1.5 px-2.5 rounded-lg text-slate-600 hover:bg-slate-100 font-medium transition-colors"
                   >
                     Buka Pengaturan Apotek
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      logout();
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full text-left text-xs py-1.5 px-2.5 rounded-lg text-rose-600 hover:bg-rose-50 font-semibold flex items-center gap-2 transition-colors pt-1 border-t border-slate-100"
+                  >
+                    <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                    <span>Keluar / Logout</span>
                   </button>
                 </div>
               </div>

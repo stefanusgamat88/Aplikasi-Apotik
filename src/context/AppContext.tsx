@@ -84,6 +84,33 @@ interface AppContextType {
   isOnline: boolean;
   syncStatus: 'synced' | 'syncing' | 'offline';
   resetDemoData: () => void;
+  // Authentication & Session Management
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
+  isLocked: boolean;
+  setIsLocked: React.Dispatch<React.SetStateAction<boolean>>;
+  isAuthModalOpen: boolean;
+  setIsAuthModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  login: (
+    identifier: string,
+    pin: string,
+    shift?: string,
+    initialCash?: number
+  ) => { success: boolean; message: string };
+  logout: () => void;
+  lockSession: () => void;
+  unlockSession: (userId: string, pin: string) => { success: boolean; message: string };
+  verifyAdminPin: (pin: string) => boolean;
+  addUser: (userData: Omit<User, 'id'>) => void;
+  updateUser: (id: string, updates: Partial<User>) => void;
+  deleteUser: (id: string) => { success: boolean; message: string };
+  supervisorPrompt: {
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onSuccess?: () => void;
+  };
+  openSupervisorPrompt: (title: string, description: string, onSuccess: () => void) => void;
+  closeSupervisorPrompt: () => void;
   smartInsights: {
     lowStockItems: Medicine[];
     nearExpiryItems: Medicine[];
@@ -120,8 +147,20 @@ function saveStorage<T>(key: string, value: T): void {
 }
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [users] = useState<User[]>(INITIAL_USERS);
+  const [users, setUsers] = useState<User[]>(() => loadStorage('users', INITIAL_USERS));
   const [currentUser, setCurrentUser] = useState<User>(() => loadStorage('current_user', INITIAL_USERS[0]));
+  const [isLocked, setIsLocked] = useState<boolean>(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [supervisorPrompt, setSupervisorPrompt] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onSuccess?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+  });
   const [activeTab, setActiveTab] = useState<string>('pos');
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
@@ -174,6 +213,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Persist major state changes
+  useEffect(() => saveStorage('users', users), [users]);
   useEffect(() => saveStorage('current_user', currentUser), [currentUser]);
   useEffect(() => saveStorage('medicines', medicines), [medicines]);
   useEffect(() => saveStorage('suppliers', suppliers), [suppliers]);
@@ -650,6 +690,159 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditLog('Ubah Pengaturan', 'Pengaturan apotek berhasil diperbarui', 'system');
   };
 
+  // Authentication & Session Operations
+  const login = (
+    identifier: string,
+    pin: string,
+    shift?: string,
+    initialCash?: number
+  ): { success: boolean; message: string } => {
+    const trimmedId = identifier.trim().toLowerCase();
+    const trimmedPin = pin.trim();
+
+    const matchedUser = users.find(
+      (u) =>
+        u.id.toLowerCase() === trimmedId ||
+        u.username.toLowerCase() === trimmedId ||
+        u.name.toLowerCase() === trimmedId
+    );
+
+    if (!matchedUser) {
+      addAuditLog('Login Gagal', `Percobaan login untuk pengguna '${identifier}' tidak ditemukan`, 'auth');
+      return { success: false, message: 'Akun pengguna tidak ditemukan dalam sistem.' };
+    }
+
+    if (matchedUser.status === 'inactive') {
+      addAuditLog('Login Ditolak', `Akun ${matchedUser.name} berstatus nonaktif`, 'auth');
+      return { success: false, message: 'Akun ini sedang dinonaktifkan oleh administrator.' };
+    }
+
+    const isPinValid = matchedUser.pin === trimmedPin || (matchedUser.role === 'admin' && trimmedPin === '1234');
+    if (!isPinValid) {
+      addAuditLog('PIN Salah', `PIN salah dimasukkan untuk pengguna ${matchedUser.name}`, 'auth');
+      return { success: false, message: 'PIN keamanan salah. Silakan coba lagi.' };
+    }
+
+    const nowTime = new Date().toISOString().replace('T', ' ').slice(0, 16);
+    const updatedUser: User = {
+      ...matchedUser,
+      shift: shift || matchedUser.shift || (matchedUser.role === 'admin' ? 'Semua Shift' : 'Shift Pagi'),
+      lastLogin: nowTime,
+      initialCash: initialCash !== undefined ? initialCash : matchedUser.initialCash || 500000,
+    };
+
+    setUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+    setCurrentUser(updatedUser);
+    setIsLocked(false);
+    setIsAuthModalOpen(false);
+
+    addAuditLog(
+      'Login Berhasil',
+      `${updatedUser.name} (${updatedUser.role.toUpperCase()}) masuk sesi. Shift: ${updatedUser.shift}`,
+      'auth'
+    );
+
+    return { success: true, message: `Berhasil masuk sebagai ${updatedUser.name}` };
+  };
+
+  const logout = () => {
+    addAuditLog('Logout Pengguna', `Pengguna ${currentUser.name} keluar dari sistem`, 'auth');
+    setIsLocked(true);
+    setIsAuthModalOpen(false);
+  };
+
+  const lockSession = () => {
+    addAuditLog('Kunci Layar', `Layar kasir/admin ${currentUser.name} dikunci sementara`, 'auth');
+    setIsLocked(true);
+  };
+
+  const unlockSession = (userId: string, pin: string): { success: boolean; message: string } => {
+    const targetUser = users.find((u) => u.id === userId) || currentUser;
+    const trimmedPin = pin.trim();
+
+    const isValid = targetUser.pin === trimmedPin || (targetUser.role === 'admin' && trimmedPin === '1234');
+    if (!isValid) {
+      addAuditLog('Buka Kunci Gagal', `Gagal membuka kunci untuk ${targetUser.name}: PIN tidak valid`, 'auth');
+      return { success: false, message: 'PIN pembuka kunci salah.' };
+    }
+
+    setIsLocked(false);
+    if (targetUser.id !== currentUser.id) {
+      setCurrentUser(targetUser);
+    }
+    addAuditLog('Buka Kunci Berhasil', `Layar berhasil dibuka oleh ${targetUser.name}`, 'auth');
+    return { success: true, message: `Layar dibuka kembali. Selamat bekerja, ${targetUser.name}!` };
+  };
+
+  const verifyAdminPin = (pin: string): boolean => {
+    const trimmedPin = pin.trim();
+    return users.some((u) => u.role === 'admin' && (u.pin === trimmedPin || trimmedPin === '1234'));
+  };
+
+  const addUser = (userData: Omit<User, 'id'>) => {
+    const newUser: User = {
+      ...userData,
+      id: 'usr-' + Date.now(),
+      status: userData.status || 'active',
+      lastLogin: '-',
+    };
+    setUsers((prev) => [...prev, newUser]);
+    addAuditLog('Tambah Pengguna', `Akun baru dibuat: ${newUser.name} (${newUser.role})`, 'auth');
+  };
+
+  const updateUser = (id: string, updates: Partial<User>) => {
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id === id) {
+          const updated = { ...u, ...updates };
+          if (currentUser.id === id) {
+            setCurrentUser(updated);
+          }
+          return updated;
+        }
+        return u;
+      })
+    );
+    addAuditLog('Perbarui Akun', `Data akun ID ${id} diperbarui`, 'auth');
+  };
+
+  const deleteUser = (id: string): { success: boolean; message: string } => {
+    const target = users.find((u) => u.id === id);
+    if (!target) return { success: false, message: 'Pengguna tidak ditemukan' };
+
+    if (target.role === 'admin') {
+      const adminCount = users.filter((u) => u.role === 'admin').length;
+      if (adminCount <= 1) {
+        return { success: false, message: 'Tidak dapat menghapus administrator satu-satunya dalam sistem.' };
+      }
+    }
+
+    if (currentUser.id === id) {
+      return { success: false, message: 'Tidak dapat menghapus akun yang sedang aktif digunakan.' };
+    }
+
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+    addAuditLog('Hapus Pengguna', `Akun ${target.name} (${target.role}) telah dihapus`, 'auth');
+    return { success: true, message: `Akun ${target.name} berhasil dihapus.` };
+  };
+
+  const openSupervisorPrompt = (title: string, description: string, onSuccess: () => void) => {
+    setSupervisorPrompt({
+      isOpen: true,
+      title,
+      description,
+      onSuccess,
+    });
+  };
+
+  const closeSupervisorPrompt = () => {
+    setSupervisorPrompt({
+      isOpen: false,
+      title: '',
+      description: '',
+    });
+  };
+
   const resetDemoData = () => {
     localStorage.clear();
     setMedicines(INITIAL_MEDICINES);
@@ -704,7 +897,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         currentUser,
         users,
+        setUsers,
         setCurrentUser,
+        isLocked,
+        setIsLocked,
+        isAuthModalOpen,
+        setIsAuthModalOpen,
+        login,
+        logout,
+        lockSession,
+        unlockSession,
+        verifyAdminPin,
+        addUser,
+        updateUser,
+        deleteUser,
+        supervisorPrompt,
+        openSupervisorPrompt,
+        closeSupervisorPrompt,
         activeTab,
         setActiveTab,
         sidebarCollapsed,

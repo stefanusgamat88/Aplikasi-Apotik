@@ -17,7 +17,7 @@ import { useApp } from '../context/AppContext';
 import { Transaction } from '../types';
 
 export const TransactionsView: React.FC = () => {
-  const { transactions, openReceipt, voidTransaction, currentUser } = useApp();
+  const { transactions, openReceipt, voidTransaction, currentUser, openSupervisorPrompt } = useApp();
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'voided'>('all');
   const [filterMethod, setFilterMethod] = useState('all');
@@ -43,7 +43,24 @@ export const TransactionsView: React.FC = () => {
     e.preventDefault();
     if (!voidTarget || !voidReason.trim()) return;
 
-    voidTransaction(voidTarget.id, voidReason);
+    const targetId = voidTarget.id;
+    const reason = voidReason;
+
+    if (currentUser.role === 'kasir') {
+      // Require supervisor PIN elevation
+      openSupervisorPrompt(
+        `Otorisasi Void Faktur #${voidTarget.invoiceNumber}`,
+        `Kasir (${currentUser.name}) memerlukan persetujuan Supervisor / Apoteker untuk membatalkan transaksi ini.`,
+        () => {
+          voidTransaction(targetId, reason);
+          setVoidTarget(null);
+          setVoidReason('');
+        }
+      );
+      return;
+    }
+
+    voidTransaction(targetId, reason);
     setVoidTarget(null);
     setVoidReason('');
   };

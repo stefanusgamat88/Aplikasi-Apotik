@@ -11,6 +11,8 @@ import {
   CreditCard,
   FileSpreadsheet,
   FolderTree,
+  KeyRound,
+  Lock,
   LogOut,
   Pill,
   Settings,
@@ -39,6 +41,7 @@ export const Sidebar: React.FC = () => {
     updateSettings,
     transactions,
     syncStatus,
+    lockSession,
   } = useApp();
 
   const totalAlerts = smartInsights.lowStockItems.length + smartInsights.nearExpiryItems.length;
@@ -61,6 +64,14 @@ export const Sidebar: React.FC = () => {
     { id: 'transactions', label: 'Transaksi', icon: CreditCard, role: 'all', badge: null },
     { id: 'customers', label: 'Pelanggan', icon: Users, role: 'all', badge: null },
     { id: 'reports', label: 'Laporan Lengkap', icon: FileSpreadsheet, role: 'admin', badge: null },
+    {
+      id: 'auth',
+      label: 'Autentikasi & Shift',
+      icon: KeyRound,
+      role: 'all',
+      badge: 'Login',
+      badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+    },
     { id: 'cashiers', label: 'Manajemen Kasir', icon: ShieldCheck, role: 'admin', badge: null },
     { id: 'settings', label: 'Pengaturan', icon: Settings, role: 'admin', badge: null },
   ];
@@ -258,14 +269,24 @@ export const Sidebar: React.FC = () => {
             </div>
 
             {!sidebarCollapsed && (
-              <button
-                id="btn-switch-role"
-                onClick={handleRoleSwitch}
-                title="Ganti Pengguna / Role (Admin ↔ Kasir)"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-300 hover:bg-slate-800 transition-colors shrink-0"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  id="btn-sidebar-lock"
+                  onClick={lockSession}
+                  title="Kunci Layar Kasir (Lock Screen)"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-colors"
+                >
+                  <Lock className="w-4 h-4" />
+                </button>
+                <button
+                  id="btn-switch-role"
+                  onClick={() => setActiveTab('auth')}
+                  title="Buka Menu Autentikasi & Ganti Shift"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-300 hover:bg-slate-800 transition-colors"
+                >
+                  <KeyRound className="w-4 h-4" />
+                </button>
+              </div>
             )}
           </div>
         </div>

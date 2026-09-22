@@ -4,6 +4,8 @@ import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
 import { ReceiptModal } from './components/ReceiptModal';
 import { BarcodeScannerModal } from './components/BarcodeScannerModal';
+import { LockScreenModal } from './components/LockScreenModal';
+import { SupervisorPinModal } from './components/SupervisorPinModal';
 
 // Views
 import { PosView } from './views/PosView';
@@ -18,6 +20,7 @@ import { ReportsView } from './views/ReportsView';
 import { CategoriesView } from './views/CategoriesView';
 import { CashiersManagementView } from './views/CashiersManagementView';
 import { SettingsView } from './views/SettingsView';
+import { AuthView } from './views/AuthView';
 
 const MainLayout: React.FC = () => {
   const { activeTab } = useApp();
@@ -48,6 +51,8 @@ const MainLayout: React.FC = () => {
         return <CashiersManagementView />;
       case 'settings':
         return <SettingsView />;
+      case 'auth':
+        return <AuthView />;
       default:
         return <PosView />;
     }
@@ -72,6 +77,8 @@ const MainLayout: React.FC = () => {
       {/* Global Modals */}
       <ReceiptModal />
       <BarcodeScannerModal />
+      <LockScreenModal />
+      <SupervisorPinModal />
     </div>
   );
 };

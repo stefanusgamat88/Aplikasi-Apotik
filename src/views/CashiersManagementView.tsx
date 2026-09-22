@@ -5,6 +5,7 @@ import {
   Clock,
   History,
   Key,
+  KeyRound,
   Lock,
   Plus,
   Shield,
@@ -15,41 +16,7 @@ import {
 import { useApp } from '../context/AppContext';
 
 export const CashiersManagementView: React.FC = () => {
-  const { auditLogs, currentUser } = useApp();
-
-  // Cashier list
-  const [cashiers, setCashiers] = useState([
-    {
-      id: 'usr-1',
-      name: 'apt. Sari Dewi, S.Farm',
-      role: 'Apoteker Pengelola Apotek (APA)',
-      badge: 'Apoteker',
-      phone: '08123456789',
-      status: 'active',
-      shiftStatus: 'Shift Pagi (07:00 - 15:00)',
-      lastLogin: 'Hari ini, 07:15',
-    },
-    {
-      id: 'usr-2',
-      name: 'Rian Pratama',
-      role: 'Staff Kasir Senior',
-      badge: 'Kasir',
-      phone: '08198765432',
-      status: 'active',
-      shiftStatus: 'Shift Siang (14:30 - 22:00)',
-      lastLogin: 'Hari ini, 14:28',
-    },
-    {
-      id: 'usr-3',
-      name: 'Budi Santoso',
-      role: 'Super Administrator & Owner',
-      badge: 'Admin',
-      phone: '081122334455',
-      status: 'active',
-      shiftStatus: 'Full Access 24/7',
-      lastLogin: 'Kemarin, 21:00',
-    },
-  ]);
+  const { auditLogs, currentUser, users, setActiveTab } = useApp();
 
   // Shift drawer / modal
   const [shiftDrawerOpen, setShiftDrawerOpen] = useState(false);
@@ -69,7 +36,14 @@ export const CashiersManagementView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setActiveTab('auth')}
+            className="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all flex items-center gap-2 shadow-xs"
+          >
+            <KeyRound className="w-4 h-4 text-emerald-600" />
+            Menu Autentikasi & Shift
+          </button>
           <button
             onClick={() => setShiftDrawerOpen(true)}
             className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-xs"
@@ -82,44 +56,44 @@ export const CashiersManagementView: React.FC = () => {
 
       {/* Cashiers List */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {cashiers.map((c) => (
+        {users.map((c) => (
           <div
             key={c.id}
             className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-3"
           >
             <div>
               <div className="flex items-start justify-between">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-sm">
-                  {c.name.charAt(0)}
-                </div>
+                <img
+                  src={c.avatar}
+                  alt={c.name}
+                  className="w-11 h-11 rounded-2xl object-cover border border-slate-200 shadow-xs"
+                />
                 <span
                   className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                    c.badge === 'Admin'
+                    c.role === 'admin'
                       ? 'bg-purple-50 text-purple-700 border-purple-200'
-                      : c.badge === 'Apoteker'
-                      ? 'bg-blue-50 text-blue-700 border-blue-200'
                       : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   }`}
                 >
-                  {c.badge}
+                  {c.role === 'admin' ? 'Administrator' : 'Kasir POS'}
                 </span>
               </div>
 
               <div className="mt-3">
                 <h3 className="font-bold text-sm text-slate-900">{c.name}</h3>
-                <p className="text-xs text-slate-500">{c.role}</p>
-                <p className="text-[11px] text-slate-400 mt-1">Telp: {c.phone}</p>
+                <p className="text-xs text-slate-500 font-mono">@{c.username}</p>
+                <p className="text-[11px] text-slate-400 mt-1">Telp: {c.phone || '-'}</p>
               </div>
             </div>
 
             <div className="pt-3 border-t border-slate-100 space-y-1 text-xs">
               <div className="flex justify-between text-slate-500">
                 <span>Shift Kerja:</span>
-                <span className="font-semibold text-slate-700">{c.shiftStatus}</span>
+                <span className="font-semibold text-slate-700">{c.shift || 'Shift Pagi'}</span>
               </div>
               <div className="flex justify-between text-slate-500">
-                <span>Login Terakhir:</span>
-                <span className="text-slate-600">{c.lastLogin}</span>
+                <span>Status Akun:</span>
+                <span className="text-emerald-600 font-semibold capitalize">{c.status || 'Active'}</span>
               </div>
             </div>
           </div>

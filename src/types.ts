@@ -8,6 +8,10 @@ export interface User {
   pin: string;
   username: string;
   shift?: string;
+  phone?: string;
+  status?: 'active' | 'inactive';
+  lastLogin?: string;
+  initialCash?: number;
 }
 
 export interface MedicineUnit {

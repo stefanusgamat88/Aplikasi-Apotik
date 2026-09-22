@@ -18,7 +18,11 @@ export const INITIAL_USERS: User[] = [
     avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=150&auto=format&fit=crop&q=80',
     pin: '1234',
     username: 'admin',
-    shift: 'Semua Shift',
+    shift: 'Semua Shift (Owner / Apoteker)',
+    phone: '0812-3456-7890',
+    status: 'active',
+    lastLogin: '2026-09-22 07:30',
+    initialCash: 1000000,
   },
   {
     id: 'usr-2',
@@ -28,6 +32,10 @@ export const INITIAL_USERS: User[] = [
     pin: '1111',
     username: 'kasir1',
     shift: 'Shift Pagi (07:00 - 15:00)',
+    phone: '0813-9876-5432',
+    status: 'active',
+    lastLogin: '2026-09-22 07:00',
+    initialCash: 500000,
   },
   {
     id: 'usr-3',
@@ -37,6 +45,10 @@ export const INITIAL_USERS: User[] = [
     pin: '2222',
     username: 'kasir2',
     shift: 'Shift Sore (15:00 - 22:00)',
+    phone: '0821-5566-7788',
+    status: 'active',
+    lastLogin: '2026-09-21 15:00',
+    initialCash: 500000,
   },
 ];
 
