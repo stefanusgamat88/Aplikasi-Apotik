@@ -1,0 +1,85 @@
+import React from 'react';
+import { AppProvider, useApp } from './context/AppContext';
+import { Sidebar } from './components/Sidebar';
+import { Navbar } from './components/Navbar';
+import { ReceiptModal } from './components/ReceiptModal';
+import { BarcodeScannerModal } from './components/BarcodeScannerModal';
+
+// Views
+import { PosView } from './views/PosView';
+import { DashboardView } from './views/DashboardView';
+import { MedicinesView } from './views/MedicinesView';
+import { StockCardsView } from './views/StockCardsView';
+import { PurchasesView } from './views/PurchasesView';
+import { SuppliersView } from './views/SuppliersView';
+import { TransactionsView } from './views/TransactionsView';
+import { CustomersView } from './views/CustomersView';
+import { ReportsView } from './views/ReportsView';
+import { CategoriesView } from './views/CategoriesView';
+import { CashiersManagementView } from './views/CashiersManagementView';
+import { SettingsView } from './views/SettingsView';
+
+const MainLayout: React.FC = () => {
+  const { activeTab } = useApp();
+
+  const renderActiveView = () => {
+    switch (activeTab) {
+      case 'pos':
+        return <PosView />;
+      case 'dashboard':
+        return <DashboardView />;
+      case 'medicines':
+        return <MedicinesView />;
+      case 'stock-cards':
+        return <StockCardsView />;
+      case 'purchases':
+        return <PurchasesView />;
+      case 'suppliers':
+        return <SuppliersView />;
+      case 'transactions':
+        return <TransactionsView />;
+      case 'customers':
+        return <CustomersView />;
+      case 'reports':
+        return <ReportsView />;
+      case 'categories':
+        return <CategoriesView />;
+      case 'cashiers':
+        return <CashiersManagementView />;
+      case 'settings':
+        return <SettingsView />;
+      default:
+        return <PosView />;
+    }
+  };
+
+  return (
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-100 font-['Plus_Jakarta_Sans',sans-serif]">
+      {/* Sidebar Navigation */}
+      <Sidebar />
+
+      {/* Main Content Area */}
+      <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
+        {/* Top Navbar */}
+        <Navbar />
+
+        {/* Dynamic View Canvas */}
+        <main className="flex-1 min-w-0 overflow-y-auto bg-slate-100 relative">
+          {renderActiveView()}
+        </main>
+      </div>
+
+      {/* Global Modals */}
+      <ReceiptModal />
+      <BarcodeScannerModal />
+    </div>
+  );
+};
+
+export default function App() {
+  return (
+    <AppProvider>
+      <MainLayout />
+    </AppProvider>
+  );
+}
