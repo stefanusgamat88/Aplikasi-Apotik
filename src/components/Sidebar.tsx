@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   AlertTriangle,
+  ArrowRight,
   BarChart3,
   Boxes,
   Building2,
@@ -42,13 +43,24 @@ export const Sidebar: React.FC = () => {
     transactions,
     syncStatus,
     lockSession,
+    setIsAuthModalOpen,
   } = useApp();
 
   const totalAlerts = smartInsights.lowStockItems.length + smartInsights.nearExpiryItems.length;
 
   const menuItems = [
     { id: 'pos', label: 'Kasir POS', icon: ShoppingCart, role: 'all', badge: null, highlight: true },
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, role: 'all', badge: null },
+    {
+      id: 'dashboard',
+      label: 'Dashboard Admin',
+      icon: BarChart3,
+      role: 'all',
+      badge: currentUser.role !== 'admin' ? 'Login Admin' : 'Admin',
+      badgeColor:
+        currentUser.role !== 'admin'
+          ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    },
     {
       id: 'medicines',
       label: 'Data Obat',
@@ -77,6 +89,11 @@ export const Sidebar: React.FC = () => {
   ];
 
   const handleMenuClick = (tabId: string) => {
+    if (tabId === 'dashboard' && currentUser.role !== 'admin') {
+      // Prompt admin login modal before entering dashboard
+      setIsAuthModalOpen(true);
+      return;
+    }
     setActiveTab(tabId);
     setMobileMenuOpen(false);
   };
@@ -160,6 +177,40 @@ export const Sidebar: React.FC = () => {
 
         {/* Navigation Links */}
         <div className="flex-1 overflow-y-auto py-3 px-3 space-y-1 custom-scrollbar">
+          {/* Prominent Tombol Login Admin (if current role is cashier) */}
+          {currentUser.role !== 'admin' && (
+            <div className="mb-3">
+              {!sidebarCollapsed ? (
+                <button
+                  id="btn-sidebar-admin-login-cta"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="w-full p-2.5 rounded-2xl bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 hover:from-purple-900 hover:to-indigo-900 border border-purple-500/50 text-left flex items-center justify-between text-xs text-white shadow-lg shadow-purple-950/40 transition-all group"
+                  title="Klik untuk membuka login admin sebelum masuk dashboard"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-xl bg-purple-500/30 text-purple-300 flex items-center justify-center shrink-0">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-bold text-[11px] text-purple-200 truncate">Tombol Login Admin</span>
+                      <span className="text-[9px] text-slate-400 truncate">Masuk Dashboard & Laba</span>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-purple-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                </button>
+              ) : (
+                <button
+                  id="btn-sidebar-admin-login-collapsed"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="w-full p-2 rounded-xl bg-purple-950 border border-purple-500/50 text-purple-300 hover:bg-purple-900 flex items-center justify-center transition-colors"
+                  title="Tombol Login Admin (Sebelum Masuk Dashboard)"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
+
           {menuItems.map((item) => {
             const isAccessible = item.role === 'all' || currentUser.role === 'admin';
             const isActive = activeTab === item.id;

@@ -6,6 +6,7 @@ import { ReceiptModal } from './components/ReceiptModal';
 import { BarcodeScannerModal } from './components/BarcodeScannerModal';
 import { LockScreenModal } from './components/LockScreenModal';
 import { SupervisorPinModal } from './components/SupervisorPinModal';
+import { AdminLoginModal } from './components/AdminLoginModal';
 
 // Views
 import { PosView } from './views/PosView';
@@ -79,6 +80,7 @@ const MainLayout: React.FC = () => {
       <BarcodeScannerModal />
       <LockScreenModal />
       <SupervisorPinModal />
+      <AdminLoginModal />
     </div>
   );
 };

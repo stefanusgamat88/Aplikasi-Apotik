@@ -1,21 +1,32 @@
 import React, { useState } from 'react';
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowDownRight,
+  ArrowLeft,
+  ArrowRight,
   ArrowUpRight,
   Boxes,
   Calendar,
+  CheckCircle2,
   Clock,
   Coins,
   CreditCard,
+  Eye,
+  EyeOff,
   Flame,
+  KeyRound,
   LineChart as LineChartIcon,
+  Lock,
   PackageCheck,
   Pill,
+  Shield,
   ShieldAlert,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   TrendingUp,
+  Unlock,
   Users,
 } from 'lucide-react';
 import {
@@ -42,9 +53,167 @@ export const DashboardView: React.FC = () => {
     setActiveTab,
     settings,
     currentUser,
+    login,
   } = useApp();
 
+  // Login Gate State (when accessing as Cashier)
+  const [gateUsername, setGateUsername] = useState('admin');
+  const [gatePin, setGatePin] = useState('');
+  const [showGatePin, setShowGatePin] = useState(false);
+  const [gateError, setGateError] = useState('');
+
   const [timeRange, setTimeRange] = useState<'7days' | '30days'>('7days');
+
+  // Handle Admin Login submission from the gate
+  const handleGateLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setGateError('');
+
+    if (!gatePin) {
+      setGateError('Silakan masukkan PIN Administrator.');
+      return;
+    }
+
+    const result = login(gateUsername, gatePin, 'Semua Shift (Owner / Apoteker)');
+    if (!result.success) {
+      setGateError(result.message);
+      setGatePin('');
+    }
+  };
+
+  const handleQuickGateDemo = () => {
+    setGateUsername('admin');
+    setGatePin('1234');
+    setGateError('');
+  };
+
+  // If user is not admin, show the Admin Login Gate BEFORE entering the dashboard
+  if (currentUser.role !== 'admin') {
+    return (
+      <div className="p-4 lg:p-8 max-w-4xl mx-auto min-h-[85vh] flex items-center justify-center">
+        <div className="w-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-slate-900 via-purple-950 to-slate-900 p-8 text-white text-center relative overflow-hidden">
+            <div className="w-16 h-16 mx-auto rounded-3xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center mb-4 text-purple-300 shadow-lg">
+              <ShieldCheck className="w-8 h-8" />
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30 text-xs font-semibold mb-2">
+              <Lock className="w-3.5 h-3.5" />
+              <span>Area Khusus Administrator</span>
+            </div>
+
+            <h2 className="text-2xl font-bold tracking-tight">Login Admin Diperlukan</h2>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-lg mx-auto mt-2 leading-relaxed">
+              Sebelum masuk menu Dashboard, silakan lakukan autentikasi Administrator. Dashboard memuat data rahasia apotek: omzet transaksi harian, laba bersih, dan nilai modal HPP.
+            </p>
+          </div>
+
+          {/* Form Content */}
+          <div className="p-6 sm:p-8 max-w-md mx-auto space-y-6">
+            {/* Active user notice */}
+            <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-center justify-between text-xs text-amber-900">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  Sesi aktif saat ini: <strong>{currentUser.name}</strong> ({currentUser.role.toUpperCase()})
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleGateLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Username Administrator:
+                </label>
+                <div className="relative">
+                  <input
+                    id="gate-admin-username"
+                    type="text"
+                    value={gateUsername}
+                    onChange={(e) => {
+                      setGateUsername(e.target.value);
+                      setGateError('');
+                    }}
+                    required
+                    placeholder="admin"
+                    className="w-full text-xs font-bold pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
+                  />
+                  <Shield className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  PIN Keamanan Admin (Demo: 1234):
+                </label>
+                <div className="relative">
+                  <input
+                    id="gate-admin-pin"
+                    type={showGatePin ? 'text' : 'password'}
+                    maxLength={6}
+                    value={gatePin}
+                    onChange={(e) => {
+                      setGatePin(e.target.value);
+                      setGateError('');
+                    }}
+                    autoFocus
+                    placeholder="Masukkan PIN 4-digit..."
+                    className="w-full text-center tracking-widest text-lg font-bold pl-9 pr-10 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
+                  />
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+                  <button
+                    type="button"
+                    onClick={() => setShowGatePin(!showGatePin)}
+                    className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600"
+                  >
+                    {showGatePin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {gateError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{gateError}</span>
+                </div>
+              )}
+
+              {/* Main Prominent Tombol Login Admin */}
+              <button
+                id="btn-gate-login-admin"
+                type="submit"
+                className="w-full py-3.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition-all shadow-lg shadow-purple-950/20 flex items-center justify-center gap-2 active:scale-98"
+              >
+                <Unlock className="w-4 h-4" />
+                <span>Tombol Login Admin & Buka Dashboard</span>
+              </button>
+
+              {/* Quick shortcut & Back to POS */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                <button
+                  type="button"
+                  onClick={handleQuickGateDemo}
+                  className="text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Shortcut Demo (PIN: 1234)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('pos')}
+                  className="text-slate-500 hover:text-slate-800 font-medium flex items-center gap-1"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Kembali ke Kasir POS</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Chart data preparation
   const salesHistory = [

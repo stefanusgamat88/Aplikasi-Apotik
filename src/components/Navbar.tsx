@@ -10,6 +10,7 @@ import {
   QrCode,
   RefreshCw,
   Search,
+  ShieldCheck,
   Sparkles,
   UserCheck,
   Wifi,
@@ -32,6 +33,7 @@ export const Navbar: React.FC = () => {
     settings,
     lockSession,
     logout,
+    setIsAuthModalOpen,
   } = useApp();
 
   const [time, setTime] = useState<string>('');
@@ -264,6 +266,20 @@ export const Navbar: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Tombol Login Admin (if current role is cashier) */}
+          {currentUser.role !== 'admin' && (
+            <button
+              id="btn-navbar-admin-login"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 text-xs font-bold transition-all shadow-xs"
+              title="Tombol Login Admin (Sebelum Masuk Dashboard)"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+              <span className="hidden sm:inline">Tombol Login Admin</span>
+              <span className="sm:hidden">Admin</span>
+            </button>
+          )}
 
           {/* User Profile / Quick Role Switch */}
           <div className="relative">
