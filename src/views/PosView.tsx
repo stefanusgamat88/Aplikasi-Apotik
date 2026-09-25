@@ -17,6 +17,7 @@ import {
   Users,
   Wallet,
   Smartphone,
+  Lock,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Medicine, MedicineUnit, PaymentMethod } from '../types';
@@ -38,6 +39,7 @@ export const PosView: React.FC = () => {
     customers,
     addCustomer,
     settings,
+    lockSession,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -158,6 +160,16 @@ export const PosView: React.FC = () => {
             >
               <QrCode className="w-4 h-4" />
               <span className="hidden sm:inline">Scan Barcode</span>
+            </button>
+
+            <button
+              id="btn-lock-pos-view"
+              onClick={lockSession}
+              className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs sm:text-sm font-semibold shadow-xs transition-colors shrink-0 cursor-pointer"
+              title="Kunci Layar Kasir POS"
+            >
+              <Lock className="w-4 h-4 text-amber-600" />
+              <span className="hidden sm:inline">Kunci Layar</span>
             </button>
           </div>
 

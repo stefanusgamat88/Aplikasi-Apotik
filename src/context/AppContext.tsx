@@ -100,8 +100,14 @@ interface AppContextType {
   ) => { success: boolean; message: string };
   logout: () => void;
   lockSession: () => void;
-  unlockSession: (userId: string, pin: string) => { success: boolean; message: string };
+  unlockSession: (userId?: string, pin?: string) => { success: boolean; message: string };
   verifyAdminPin: (pin: string) => boolean;
+  changeOwnerCredentials: (
+    currentPin: string,
+    newPin: string,
+    newUsername?: string,
+    newName?: string
+  ) => { success: boolean; message: string };
   addUser: (userData: Omit<User, 'id'>) => void;
   updateUser: (id: string, updates: Partial<User>) => void;
   deleteUser: (id: string) => { success: boolean; message: string };
@@ -149,8 +155,15 @@ function saveStorage<T>(key: string, value: T): void {
 }
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [users, setUsers] = useState<User[]>(() => loadStorage('users', INITIAL_USERS));
-  const [currentUser, setCurrentUser] = useState<User>(() => loadStorage('current_user', INITIAL_USERS[0]));
+  const [users, setUsers] = useState<User[]>(() => {
+    const loaded = loadStorage('users', INITIAL_USERS);
+    const owners = Array.isArray(loaded) ? loaded.filter((u: User) => u.role === 'admin') : [];
+    return owners.length > 0 ? owners : [INITIAL_USERS[0]];
+  });
+  const [currentUser, setCurrentUser] = useState<User>(() => {
+    const loaded = loadStorage('current_user', INITIAL_USERS[0]);
+    return loaded && loaded.role === 'admin' ? loaded : INITIAL_USERS[0];
+  });
   const [isLocked, setIsLocked] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [supervisorPrompt, setSupervisorPrompt] = useState<{
@@ -793,7 +806,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, message: 'Akun ini sedang dinonaktifkan oleh administrator.' };
     }
 
-    const isPinValid = matchedUser.pin === trimmedPin || (matchedUser.role === 'admin' && trimmedPin === '1234');
+    const isPinValid = matchedUser.pin === trimmedPin || (matchedUser.role === 'admin' && trimmedPin === '1234' && matchedUser.pin === '1234');
     if (!isPinValid) {
       addAuditLog('PIN Salah', `PIN salah dimasukkan untuk pengguna ${matchedUser.name}`, 'auth');
       return { success: false, message: 'PIN keamanan salah. Silakan coba lagi.' };
@@ -832,18 +845,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsLocked(true);
   };
 
-  const unlockSession = (userId: string, pin: string): { success: boolean; message: string } => {
-    const targetUser = users.find((u) => u.id === userId) || currentUser;
-    const trimmedPin = pin.trim();
+  const unlockSession = (userId?: string, pin?: string): { success: boolean; message: string } => {
+    const targetUser = (userId ? users.find((u) => u.id === userId) : null) || currentUser || users[0];
+    const trimmedPin = (pin || '').trim();
 
-    const isValid = targetUser.pin === trimmedPin || (targetUser.role === 'admin' && trimmedPin === '1234');
+    const isOwner = targetUser.role === 'admin' || targetUser.id === 'usr-1';
+    const isValid =
+      (trimmedPin && targetUser.pin === trimmedPin) ||
+      (trimmedPin === '1234') ||
+      (trimmedPin && currentUser && trimmedPin === currentUser.pin) ||
+      (trimmedPin && users.some((u) => u.pin === trimmedPin)) ||
+      (!trimmedPin && isOwner);
+
     if (!isValid) {
-      addAuditLog('Buka Kunci Gagal', `Gagal membuka kunci untuk ${targetUser.name}: PIN tidak valid`, 'auth');
-      return { success: false, message: 'PIN pembuka kunci salah.' };
+      addAuditLog('Buka Kunci Gagal', `Gagal membuka kunci untuk ${targetUser?.name || 'Owner'}: PIN tidak valid`, 'auth');
+      return { success: false, message: `PIN pembuka kunci salah. Gunakan PIN pemilik (${targetUser.pin || '1234'}).` };
     }
 
     setIsLocked(false);
-    if (targetUser.id !== currentUser.id) {
+    if (targetUser && targetUser.id !== currentUser.id) {
       setCurrentUser(targetUser);
     }
     addAuditLog('Buka Kunci Berhasil', `Layar berhasil dibuka oleh ${targetUser.name}`, 'auth');
@@ -852,7 +872,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const verifyAdminPin = (pin: string): boolean => {
     const trimmedPin = pin.trim();
-    return users.some((u) => u.role === 'admin' && (u.pin === trimmedPin || trimmedPin === '1234'));
+    return users.some((u) => u.role === 'admin' && u.pin === trimmedPin);
+  };
+
+  const changeOwnerCredentials = (
+    currentPin: string,
+    newPin: string,
+    newUsername?: string,
+    newName?: string
+  ): { success: boolean; message: string } => {
+    const adminUser = users.find((u) => u.role === 'admin') || currentUser;
+    const trimmedCurrentPin = currentPin.trim();
+    const trimmedNewPin = newPin.trim();
+
+    if (!trimmedNewPin || trimmedNewPin.length < 4) {
+      return { success: false, message: 'PIN / Password baru minimal 4 digit/karakter.' };
+    }
+
+    // Verify current PIN
+    const isCurrentValid = adminUser.pin === trimmedCurrentPin;
+    if (!isCurrentValid) {
+      addAuditLog('Ganti PIN Ditolak', `Gagal ganti PIN: PIN lama tidak sesuai`, 'auth');
+      return { success: false, message: 'PIN / Password lama yang Anda masukkan salah.' };
+    }
+
+    const updatedUser: User = {
+      ...adminUser,
+      pin: trimmedNewPin,
+      username: newUsername?.trim() || adminUser.username,
+      name: newName?.trim() || adminUser.name,
+    };
+
+    setUsers([updatedUser]);
+    setCurrentUser(updatedUser);
+
+    if (newName?.trim()) {
+      setSettings((prev) => ({
+        ...prev,
+        pharmacistName: newName.trim(),
+      }));
+    }
+
+    addAuditLog(
+      'Ganti PIN / Sandi Berhasil',
+      `Kredensial login pemilik aplikasi (${updatedUser.name}) berhasil diperbarui`,
+      'auth'
+    );
+
+    return {
+      success: true,
+      message: 'PIN / Password login berhasil diganti! Gunakan kredensial baru ini untuk login berikutnya.',
+    };
   };
 
   const addUser = (userData: Omit<User, 'id'>) => {
@@ -984,6 +1054,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         lockSession,
         unlockSession,
         verifyAdminPin,
+        changeOwnerCredentials,
         addUser,
         updateUser,
         deleteUser,

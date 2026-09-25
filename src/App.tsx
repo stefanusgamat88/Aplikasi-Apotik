@@ -24,7 +24,7 @@ import { SettingsView } from './views/SettingsView';
 import { AuthView } from './views/AuthView';
 
 const MainLayout: React.FC = () => {
-  const { activeTab } = useApp();
+  const { activeTab, isLocked } = useApp();
 
   const renderActiveView = () => {
     switch (activeTab) {
@@ -49,7 +49,7 @@ const MainLayout: React.FC = () => {
       case 'categories':
         return <CategoriesView />;
       case 'cashiers':
-        return <CashiersManagementView />;
+        return <AuthView />;
       case 'settings':
         return <SettingsView />;
       case 'auth':
@@ -78,7 +78,7 @@ const MainLayout: React.FC = () => {
       {/* Global Modals */}
       <ReceiptModal />
       <BarcodeScannerModal />
-      <LockScreenModal />
+      {isLocked && <LockScreenModal />}
       <SupervisorPinModal />
       <AdminLoginModal />
     </div>

@@ -7,6 +7,7 @@ import {
   Download,
   FileCheck,
   FileJson,
+  KeyRound,
   Printer,
   Receipt,
   RotateCcw,
@@ -27,6 +28,7 @@ export const SettingsView: React.FC = () => {
     exportBackupJSON,
     importBackupJSON,
     currentUser,
+    setActiveTab,
   } = useApp();
 
   const [pharmacyName, setPharmacyName] = useState(settings.pharmacyName);
@@ -460,6 +462,52 @@ export const SettingsView: React.FC = () => {
                 placeholder="Semoga Lekas Sembuh. Obat yang sudah dibeli tidak dapat ditukar."
                 className="w-full px-3 py-2 border border-slate-300 rounded-xl"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Keamanan & PIN Pemilik Section */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+            <div className="flex items-center gap-2 text-slate-800">
+              <Shield className="w-5 h-5 text-emerald-600" />
+              <div>
+                <h3 className="font-bold text-sm">Keamanan Akun & PIN Pemilik Aplikasi</h3>
+                <p className="text-[11px] text-slate-500">Mode personal murni pemilik apotek (Single Owner).</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('auth')}
+              className="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+            >
+              <KeyRound className="w-4 h-4 text-emerald-600" />
+              <span>Buka Menu Ganti PIN / Sandi</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span className="text-slate-400 block text-[10px]">Pemilik Terdaftar:</span>
+              <span className="font-bold text-slate-800">{currentUser.name}</span>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span className="text-slate-400 block text-[10px]">Username Login:</span>
+              <span className="font-mono font-bold text-slate-800">{currentUser.username}</span>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+              <div>
+                <span className="text-slate-400 block text-[10px]">Status PIN:</span>
+                <span className="font-bold text-emerald-600">● Terlindungi ({currentUser.pin.length} digit)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('auth')}
+                className="text-emerald-700 font-bold hover:underline text-[11px]"
+              >
+                Ubah PIN →
+              </button>
             </div>
           </div>
         </div>

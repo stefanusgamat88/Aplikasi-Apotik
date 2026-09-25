@@ -52,14 +52,11 @@ export const Sidebar: React.FC = () => {
     { id: 'pos', label: 'Kasir POS', icon: ShoppingCart, role: 'all', badge: null, highlight: true },
     {
       id: 'dashboard',
-      label: 'Dashboard Admin',
+      label: 'Dashboard Bisnis',
       icon: BarChart3,
       role: 'all',
-      badge: currentUser.role !== 'admin' ? 'Login Admin' : 'Admin',
-      badgeColor:
-        currentUser.role !== 'admin'
-          ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
-          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+      badge: 'Owner',
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
     },
     {
       id: 'medicines',
@@ -78,31 +75,18 @@ export const Sidebar: React.FC = () => {
     { id: 'reports', label: 'Laporan Lengkap', icon: FileSpreadsheet, role: 'all', badge: null },
     {
       id: 'auth',
-      label: 'Login & Keamanan',
+      label: 'Ganti PIN / Sandi',
       icon: KeyRound,
       role: 'all',
-      badge: currentUser.role === 'admin' ? 'Admin' : 'Login',
-      badgeColor:
-        currentUser.role === 'admin'
-          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-          : 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+      badge: 'Pemilik',
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
     },
     { id: 'settings', label: 'Pengaturan & Backup', icon: Settings, role: 'all', badge: 'Backup', badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
   ];
 
   const handleMenuClick = (tabId: string) => {
-    if (tabId === 'dashboard' && currentUser.role !== 'admin') {
-      // Prompt admin login modal before entering dashboard
-      setIsAuthModalOpen(true);
-      return;
-    }
     setActiveTab(tabId);
     setMobileMenuOpen(false);
-  };
-
-  const handleRoleSwitch = () => {
-    const nextUser = users.find((u) => u.id !== currentUser.id) || users[0];
-    setCurrentUser(nextUser);
   };
 
   return (

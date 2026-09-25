@@ -266,21 +266,19 @@ export const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* Tombol Login Admin (if current role is cashier) */}
-          {currentUser.role !== 'admin' && (
-            <button
-              id="btn-navbar-admin-login"
-              onClick={() => setIsAuthModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 text-xs font-bold transition-all shadow-xs"
-              title="Tombol Login Admin (Sebelum Masuk Dashboard)"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
-              <span className="hidden sm:inline">Tombol Login Admin</span>
-              <span className="sm:hidden">Admin</span>
-            </button>
-          )}
+          {/* Direct Ganti PIN / Sandi Pemilik button */}
+          <button
+            id="btn-navbar-ganti-pin"
+            onClick={() => setActiveTab('auth')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition-all shadow-xs"
+            title="Menu Ganti PIN / Password Pemilik"
+          >
+            <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="hidden sm:inline">Ganti PIN / Sandi</span>
+            <span className="sm:hidden">PIN</span>
+          </button>
 
-          {/* User Profile / Quick Role Switch */}
+          {/* User Profile / Quick Menu */}
           <div className="relative">
             <button
               id="btn-user-profile-menu"
@@ -292,7 +290,7 @@ export const Navbar: React.FC = () => {
                   {currentUser.name}
                 </span>
                 <span className="text-[10px] text-emerald-600 font-semibold uppercase">
-                  {currentUser.role === 'admin' ? 'Owner / Admin' : 'Kasir'}
+                  Pemilik Apotek (Owner)
                 </span>
               </div>
               <img
@@ -308,11 +306,9 @@ export const Navbar: React.FC = () => {
                 className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2"
               >
                 <div className="px-4 py-2 border-b border-slate-100">
-                  <p className="text-xs text-slate-400">Pengguna Personal</p>
-                  <p className="text-sm font-bold text-slate-800">{currentUser.name}</p>
-                  <p className="text-xs text-emerald-600 font-medium capitalize">
-                    {currentUser.role === 'admin' ? 'Owner / Apoteker Pengelola' : 'Akses Apotek'}
-                  </p>
+                  <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Pemilik Aplikasi</p>
+                  <p className="text-sm font-bold text-slate-800 truncate">{currentUser.name}</p>
+                  <p className="text-xs text-slate-500 font-medium">Apoteker Pengelola Apotek</p>
                 </div>
 
                 <div className="px-3 pt-2 space-y-1">
@@ -321,10 +317,10 @@ export const Navbar: React.FC = () => {
                       setActiveTab('auth');
                       setShowUserMenu(false);
                     }}
-                    className="w-full text-left text-xs py-1.5 px-2.5 rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 font-bold flex items-center gap-2 transition-colors"
+                    className="w-full text-left text-xs py-2 px-2.5 rounded-lg text-emerald-900 bg-emerald-50 hover:bg-emerald-100 font-bold flex items-center gap-2 transition-colors border border-emerald-200/60"
                   >
-                    <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Login & Keamanan PIN</span>
+                    <KeyRound className="w-4 h-4 text-emerald-600" />
+                    <span>Ganti PIN / Password Login</span>
                   </button>
 
                   <button
