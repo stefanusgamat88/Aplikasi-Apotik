@@ -157,7 +157,7 @@ export const ReceiptModal: React.FC = () => {
                 <span className="text-emerald-700">Rp {activeReceipt.total.toLocaleString('id-ID')}</span>
               </div>
               <div className="flex justify-between text-slate-700 pt-1">
-                <span className="capitalize">Bayar ({activeReceipt.paymentMethod}):</span>
+                <span className="font-semibold uppercase">Bayar ({activeReceipt.paymentMethod}):</span>
                 <span>Rp {activeReceipt.amountPaid.toLocaleString('id-ID')}</span>
               </div>
               <div className="flex justify-between text-slate-700 font-bold">

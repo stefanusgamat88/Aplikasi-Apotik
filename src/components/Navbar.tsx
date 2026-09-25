@@ -78,9 +78,8 @@ export const Navbar: React.FC = () => {
     transactions: { title: 'Riwayat Transaksi', subtitle: 'Daftar struk penjualan, cetak ulang & pembatalan void' },
     customers: { title: 'Data Pelanggan & Pasien', subtitle: 'Riwayat kunjungan, catatan alergi obat & loyalitas' },
     reports: { title: 'Laporan Lengkap & Analisis', subtitle: 'Laporan omzet, laba rugi akuntansi, ekspor PDF/Excel' },
-    auth: { title: 'Autentikasi & Kontrol Sesi', subtitle: 'Login shift kasir, wewenang peran, reset PIN & penguncian layar' },
-    cashiers: { title: 'Manajemen Kasir & Audit Log', subtitle: 'Hak akses kasir, shift kerja & riwayat audit anti manipulasi' },
-    settings: { title: 'Pengaturan Apotek', subtitle: 'Identitas apotek, nomor SIA/SIPA, printer struk thermal & pajak' },
+    auth: { title: 'Login & Keamanan PIN', subtitle: 'Verifikasi login admin personal, ganti PIN keamanan & penguncian layar' },
+    settings: { title: 'Pengaturan & Backup Data', subtitle: 'Identitas apotek, nomor SIA/SIPA, nama apoteker, printer thermal & backup JSON berkala' },
   };
 
   const currentInfo = pageTitles[activeTab] || { title: 'ApotekPOS', subtitle: 'Sistem Kasir & Stok Apotek' };
@@ -309,41 +308,14 @@ export const Navbar: React.FC = () => {
                 className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2"
               >
                 <div className="px-4 py-2 border-b border-slate-100">
-                  <p className="text-xs text-slate-400">Pengguna Aktif</p>
+                  <p className="text-xs text-slate-400">Pengguna Personal</p>
                   <p className="text-sm font-bold text-slate-800">{currentUser.name}</p>
                   <p className="text-xs text-emerald-600 font-medium capitalize">
-                    {currentUser.role === 'admin' ? 'Akses Penuh (Owner / Apoteker)' : 'Akses Kasir POS'}
+                    {currentUser.role === 'admin' ? 'Owner / Apoteker Pengelola' : 'Akses Apotek'}
                   </p>
                 </div>
 
-                <div className="py-1">
-                  <p className="px-4 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    Ganti Akun / Peran:
-                  </p>
-                  {users.map((u) => (
-                    <button
-                      key={u.id}
-                      onClick={() => {
-                        setCurrentUser(u);
-                        setShowUserMenu(false);
-                      }}
-                      className={`w-full px-4 py-2 text-left flex items-center gap-3 text-xs hover:bg-slate-50 transition-colors ${
-                        u.id === currentUser.id ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-slate-700'
-                      }`}
-                    >
-                      <img src={u.avatar} alt={u.name} className="w-6 h-6 rounded-full object-cover" />
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate">{u.name}</p>
-                        <p className="text-[10px] text-slate-400 capitalize">{u.role}</p>
-                      </div>
-                      {u.id === currentUser.id && (
-                        <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded">Aktif</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="px-3 pt-2 border-t border-slate-100 space-y-1">
+                <div className="px-3 pt-2 space-y-1">
                   <button
                     onClick={() => {
                       setActiveTab('auth');
@@ -352,7 +324,7 @@ export const Navbar: React.FC = () => {
                     className="w-full text-left text-xs py-1.5 px-2.5 rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 font-bold flex items-center gap-2 transition-colors"
                   >
                     <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Menu Autentikasi & Shift</span>
+                    <span>Login & Keamanan PIN</span>
                   </button>
 
                   <button
@@ -373,7 +345,7 @@ export const Navbar: React.FC = () => {
                     }}
                     className="w-full text-left text-xs py-1.5 px-2.5 rounded-lg text-slate-600 hover:bg-slate-100 font-medium transition-colors"
                   >
-                    Buka Pengaturan Apotek
+                    Buka Pengaturan & Backup
                   </button>
 
                   <button

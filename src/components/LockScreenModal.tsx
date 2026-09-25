@@ -133,83 +133,30 @@ export const LockScreenModal: React.FC = () => {
 
         {/* Body Content */}
         <div className="p-6 space-y-5">
-          {/* User selector */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-2">
-              Pilih Pengguna / Kasir:
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {users.map((u) => {
-                const isSelected = u.id === selectedUserId;
-                return (
-                  <button
-                    key={u.id}
-                    id={`lock-user-${u.id}`}
-                    type="button"
-                    onClick={() => {
-                      setSelectedUserId(u.id);
-                      setPin('');
-                      setErrorMessage('');
-                    }}
-                    className={`p-2.5 rounded-2xl border text-left flex flex-col items-center gap-1.5 transition-all ${
-                      isSelected
-                        ? 'border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/20'
-                        : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'
-                    }`}
-                  >
-                    <img
-                      src={u.avatar}
-                      alt={u.name}
-                      className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-xs"
-                    />
-                    <span className="text-[11px] font-bold text-slate-800 text-center truncate w-full">
-                      {u.name.split(' ')[0]}
-                    </span>
-                    <span
-                      className={`text-[9px] px-1.5 py-0.2 rounded-full font-semibold uppercase ${
-                        u.role === 'admin'
-                          ? 'bg-purple-100 text-purple-700'
-                          : 'bg-emerald-100 text-emerald-700'
-                      }`}
-                    >
-                      {u.role}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Active selected user info banner */}
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-            <div className="flex items-center gap-2.5">
+          {/* Active personal user info banner */}
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+            <div className="flex items-center gap-3">
               <img
-                src={targetUser.avatar}
-                alt={targetUser.name}
-                className="w-9 h-9 rounded-full object-cover border border-emerald-500/40"
+                src={currentUser.avatar}
+                alt={currentUser.name}
+                className="w-11 h-11 rounded-full object-cover border-2 border-emerald-500/50 shadow-xs"
               />
               <div>
-                <p className="text-xs font-bold text-slate-800">{targetUser.name}</p>
-                <p className="text-[10px] text-slate-500 capitalize">
-                  {targetUser.role === 'admin' ? 'Akses Admin / Apoteker' : targetUser.shift || 'Kasir POS'}
+                <p className="text-xs font-bold text-slate-800">{currentUser.name}</p>
+                <p className="text-[10px] text-slate-500">
+                  Pemilik Apotek / Apoteker Pengelola (Personal)
                 </p>
               </div>
             </div>
-            <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${
-                targetUser.role === 'admin'
-                  ? 'bg-purple-50 text-purple-700 border-purple-200'
-                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-              }`}
-            >
-              {targetUser.role === 'admin' ? 'Admin' : 'Kasir'}
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg border bg-emerald-50 text-emerald-700 border-emerald-200">
+              Admin Personal
             </span>
           </div>
 
           {/* PIN Input Dots */}
           <div>
             <label className="block text-center text-xs font-semibold text-slate-600 mb-2">
-              Masukkan PIN Keamanan
+              Masukkan PIN Keamanan Apoteker
             </label>
             <div className="flex items-center justify-center gap-3 mb-2">
               {[0, 1, 2, 3].map((index) => (
@@ -288,29 +235,15 @@ export const LockScreenModal: React.FC = () => {
           <div className="pt-2 border-t border-slate-100 text-center">
             <p className="text-[11px] text-slate-400 mb-1.5 flex items-center justify-center gap-1">
               <Sparkles className="w-3 h-3 text-emerald-500" />
-              <span>Shortcut Demo PIN:</span>
+              <span>Shortcut Demo PIN Personal:</span>
             </p>
-            <div className="flex items-center justify-center gap-2 flex-wrap">
+            <div className="flex items-center justify-center gap-2">
               <button
                 type="button"
                 onClick={() => handleQuickDemoFill('usr-1', '1234')}
-                className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-[10px] font-semibold transition-colors"
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition-colors shadow-2xs"
               >
-                Admin (PIN: 1234)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoFill('usr-2', '1111')}
-                className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-semibold transition-colors"
-              >
-                Kasir Pagi (PIN: 1111)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoFill('usr-3', '2222')}
-                className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-semibold transition-colors"
-              >
-                Kasir Sore (PIN: 2222)
+                Isi PIN Otomatis (Demo PIN: 1234)
               </button>
             </div>
           </div>

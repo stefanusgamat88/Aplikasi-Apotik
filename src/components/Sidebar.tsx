@@ -71,21 +71,23 @@ export const Sidebar: React.FC = () => {
     },
     { id: 'categories', label: 'Kategori Obat', icon: FolderTree, role: 'all', badge: null },
     { id: 'stock-cards', label: 'Kartu Stok', icon: ClipboardList, role: 'all', badge: null },
-    { id: 'purchases', label: 'Pembelian (Stok Masuk)', icon: Boxes, role: 'admin', badge: null },
-    { id: 'suppliers', label: 'Supplier', icon: Building2, role: 'admin', badge: null },
+    { id: 'purchases', label: 'Pembelian (Stok Masuk)', icon: Boxes, role: 'all', badge: null },
+    { id: 'suppliers', label: 'Supplier', icon: Building2, role: 'all', badge: null },
     { id: 'transactions', label: 'Transaksi', icon: CreditCard, role: 'all', badge: null },
     { id: 'customers', label: 'Pelanggan', icon: Users, role: 'all', badge: null },
-    { id: 'reports', label: 'Laporan Lengkap', icon: FileSpreadsheet, role: 'admin', badge: null },
+    { id: 'reports', label: 'Laporan Lengkap', icon: FileSpreadsheet, role: 'all', badge: null },
     {
       id: 'auth',
-      label: 'Autentikasi & Shift',
+      label: 'Login & Keamanan',
       icon: KeyRound,
       role: 'all',
-      badge: 'Login',
-      badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+      badge: currentUser.role === 'admin' ? 'Admin' : 'Login',
+      badgeColor:
+        currentUser.role === 'admin'
+          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+          : 'bg-purple-500/20 text-purple-300 border-purple-500/30',
     },
-    { id: 'cashiers', label: 'Manajemen Kasir', icon: ShieldCheck, role: 'admin', badge: null },
-    { id: 'settings', label: 'Pengaturan', icon: Settings, role: 'admin', badge: null },
+    { id: 'settings', label: 'Pengaturan & Backup', icon: Settings, role: 'all', badge: 'Backup', badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
   ];
 
   const handleMenuClick = (tabId: string) => {
@@ -304,16 +306,10 @@ export const Sidebar: React.FC = () => {
                 <div className="flex flex-col min-w-0">
                   <span className="text-xs font-semibold text-white truncate">{currentUser.name}</span>
                   <div className="flex items-center gap-1.5">
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded font-bold uppercase ${
-                        currentUser.role === 'admin'
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      }`}
-                    >
-                      {currentUser.role === 'admin' ? 'Owner / Admin' : 'Kasir'}
+                    <span className="text-[10px] px-1.5 py-0.2 rounded font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Owner / Apoteker
                     </span>
-                    <span className="text-[10px] text-slate-400 truncate">{currentUser.shift || 'Aktif'}</span>
+                    <span className="text-[10px] text-slate-400 truncate">Personal POS</span>
                   </div>
                 </div>
               )}
@@ -324,7 +320,7 @@ export const Sidebar: React.FC = () => {
                 <button
                   id="btn-sidebar-lock"
                   onClick={lockSession}
-                  title="Kunci Layar Kasir (Lock Screen)"
+                  title="Kunci Layar (Lock Screen POS)"
                   className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-colors"
                 >
                   <Lock className="w-4 h-4" />
@@ -332,7 +328,7 @@ export const Sidebar: React.FC = () => {
                 <button
                   id="btn-switch-role"
                   onClick={() => setActiveTab('auth')}
-                  title="Buka Menu Autentikasi & Ganti Shift"
+                  title="Menu Login & Keamanan"
                   className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-300 hover:bg-slate-800 transition-colors"
                 >
                   <KeyRound className="w-4 h-4" />

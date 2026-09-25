@@ -119,6 +119,7 @@ export const TransactionsView: React.FC = () => {
             <option value="all">Semua Pembayaran</option>
             <option value="cash">Tunai</option>
             <option value="qris">QRIS</option>
+            <option value="dana">DANA</option>
             <option value="debit">Debit Card</option>
             <option value="transfer">Transfer Bank</option>
           </select>

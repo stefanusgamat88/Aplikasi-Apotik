@@ -64,7 +64,7 @@ export interface CartItem {
   prescriptionNote?: string;
 }
 
-export type PaymentMethod = 'cash' | 'qris' | 'debit' | 'transfer';
+export type PaymentMethod = 'cash' | 'qris' | 'dana' | 'debit' | 'transfer';
 
 export interface Transaction {
   id: string;

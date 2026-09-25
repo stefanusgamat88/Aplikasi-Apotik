@@ -15,6 +15,8 @@ import {
   UserCheck,
   UserPlus,
   Users,
+  Wallet,
+  Smartphone,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Medicine, MedicineUnit, PaymentMethod } from '../types';
@@ -502,10 +504,11 @@ export const PosView: React.FC = () => {
         {/* Checkout & Payment Controls */}
         <div className="p-3.5 bg-slate-50 border-t border-slate-200 space-y-3 shrink-0">
           {/* Payment Method Selector */}
-          <div className="grid grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-5 gap-1">
             {[
               { id: 'cash', label: 'Tunai', icon: Banknote },
-              { id: 'qris', label: 'QRIS', icon: QrCode },
+              { id: 'qris', label: 'QRIS', icon: QrCode, badge: 'Instant' },
+              { id: 'dana', label: 'DANA', icon: Smartphone, badge: 'Dompet' },
               { id: 'debit', label: 'Debit', icon: CreditCard },
               { id: 'transfer', label: 'Transfer', icon: RotateCcw },
             ].map((m) => {
@@ -515,9 +518,11 @@ export const PosView: React.FC = () => {
                   key={m.id}
                   id={`pay-method-${m.id}`}
                   onClick={() => setPaymentMethod(m.id as PaymentMethod)}
-                  className={`py-1.5 px-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+                  className={`py-1.5 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center gap-0.5 transition-all ${
                     paymentMethod === m.id
-                      ? 'bg-emerald-700 text-white shadow-xs'
+                      ? m.id === 'dana'
+                        ? 'bg-sky-600 text-white shadow-xs'
+                        : 'bg-emerald-700 text-white shadow-xs'
                       : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'
                   }`}
                 >
@@ -527,6 +532,46 @@ export const PosView: React.FC = () => {
               );
             })}
           </div>
+
+          {/* QRIS / DANA Visual Banner */}
+          {paymentMethod === 'qris' && (
+            <div className="p-3 bg-white rounded-2xl border border-emerald-200 flex items-center gap-3">
+              <div className="w-14 h-14 bg-slate-900 rounded-xl p-1 flex items-center justify-center shrink-0">
+                <QrCode className="w-10 h-10 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-xs text-slate-800">QRIS Dinamis Apotek</span>
+                  <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                    BCA / GoPay / OVO
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  NMID: ID102008892019 • Scan & bayar otomatis pas Rp {grandTotal.toLocaleString('id-ID')}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {paymentMethod === 'dana' && (
+            <div className="p-3 bg-white rounded-2xl border border-sky-200 flex items-center gap-3">
+              <div className="w-14 h-14 bg-sky-600 rounded-xl p-1 flex flex-col items-center justify-center shrink-0 text-white">
+                <span className="font-black text-xs tracking-tighter">DANA</span>
+                <span className="text-[8px] font-semibold">Bisnis</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-xs text-slate-800">DANA Merchant Farmasi</span>
+                  <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-sky-100 text-sky-800">
+                    QR & Nomor
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Nomor DANA: 0812-9000-8800 (Apotek Sehat Harmoni) • Nominal: Rp {grandTotal.toLocaleString('id-ID')}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Quick Cash Buttons if payment method is cash */}
           {paymentMethod === 'cash' && (

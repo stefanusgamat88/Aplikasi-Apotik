@@ -84,6 +84,8 @@ interface AppContextType {
   isOnline: boolean;
   syncStatus: 'synced' | 'syncing' | 'offline';
   resetDemoData: () => void;
+  exportBackupJSON: () => void;
+  importBackupJSON: (jsonData: string) => { success: boolean; message: string };
   // Authentication & Session Management
   setUsers: React.Dispatch<React.SetStateAction<User[]>>;
   isLocked: boolean;
@@ -687,7 +689,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateSettings = (updates: Partial<PharmacySettings>) => {
     setSettings((prev) => ({ ...prev, ...updates }));
+    
+    // If pharmacistName is updated, also update admin user name to stay synchronized
+    if (updates.pharmacistName) {
+      setUsers((prevUsers) =>
+        prevUsers.map((u) => {
+          if (u.role === 'admin' || u.id === 'usr-1') {
+            return { ...u, name: updates.pharmacistName! };
+          }
+          return u;
+        })
+      );
+      if (currentUser.role === 'admin' || currentUser.id === 'usr-1') {
+        setCurrentUser((prev) => ({ ...prev, name: updates.pharmacistName! }));
+      }
+    }
+    
     addAuditLog('Ubah Pengaturan', 'Pengaturan apotek berhasil diperbarui', 'system');
+  };
+
+  // Backup & Restore Database JSON
+  const exportBackupJSON = () => {
+    const backupData = {
+      app: 'ApotekPOS',
+      version: '2.4.0',
+      timestamp: new Date().toISOString(),
+      pharmacist: settings.pharmacistName,
+      pharmacyName: settings.pharmacyName,
+      data: {
+        medicines,
+        suppliers,
+        customers,
+        transactions,
+        stockMovements,
+        settings,
+        auditLogs,
+        users,
+      },
+    };
+
+    const jsonStr = JSON.stringify(backupData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const dateTag = new Date().toISOString().slice(0, 10);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup_apotek_${settings.pharmacyName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_${dateTag}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    addAuditLog('Backup JSON', 'Database apotek berhasil diekspor ke file JSON', 'system');
+  };
+
+  const importBackupJSON = (jsonString: string): { success: boolean; message: string } => {
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (!parsed.data) {
+        return { success: false, message: 'Format file JSON tidak valid (data tidak ditemukan).' };
+      }
+
+      if (parsed.data.medicines) setMedicines(parsed.data.medicines);
+      if (parsed.data.suppliers) setSuppliers(parsed.data.suppliers);
+      if (parsed.data.customers) setCustomers(parsed.data.customers);
+      if (parsed.data.transactions) setTransactions(parsed.data.transactions);
+      if (parsed.data.stockMovements) setStockMovements(parsed.data.stockMovements);
+      if (parsed.data.settings) setSettings(parsed.data.settings);
+      if (parsed.data.users) setUsers(parsed.data.users);
+      if (parsed.data.auditLogs) setAuditLogs(parsed.data.auditLogs);
+
+      addAuditLog('Restore Backup JSON', 'Database apotek berhasil dipulihkan dari file JSON', 'system');
+      return { success: true, message: 'Database apotek berhasil dipulihkan dari file JSON!' };
+    } catch (e: any) {
+      return { success: false, message: 'Gagal memproses file JSON: ' + (e.message || 'Format tidak valid') };
+    }
   };
 
   // Authentication & Session Operations
@@ -956,6 +1032,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isOnline,
         syncStatus,
         resetDemoData,
+        exportBackupJSON,
+        importBackupJSON,
         smartInsights: {
           lowStockItems,
           nearExpiryItems,

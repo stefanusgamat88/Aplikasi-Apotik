@@ -1,19 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   AlertTriangle,
   Building,
   CheckCircle2,
+  Database,
+  Download,
   FileCheck,
+  FileJson,
   Printer,
   Receipt,
   RotateCcw,
   Save,
   Shield,
+  Upload,
+  Clock,
+  Sparkles,
+  Info,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const SettingsView: React.FC = () => {
-  const { settings, updateSettings, resetDemoData } = useApp();
+  const {
+    settings,
+    updateSettings,
+    resetDemoData,
+    exportBackupJSON,
+    importBackupJSON,
+    currentUser,
+  } = useApp();
 
   const [pharmacyName, setPharmacyName] = useState(settings.pharmacyName);
   const [pharmacyTagline, setPharmacyTagline] = useState(settings.pharmacyTagline);
@@ -29,6 +43,28 @@ export const SettingsView: React.FC = () => {
   const [taxRate, setTaxRate] = useState(settings.taxRate);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [restoreFeedback, setRestoreFeedback] = useState<{ success: boolean; message: string } | null>(null);
+  const [lastBackupTime, setLastBackupTime] = useState<string | null>(() => {
+    return localStorage.getItem('apotekpos_last_backup_time');
+  });
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Synchronize local input state whenever context settings change (e.g. from restore or other views)
+  useEffect(() => {
+    setPharmacyName(settings.pharmacyName);
+    setPharmacyTagline(settings.pharmacyTagline);
+    setAddress(settings.address);
+    setCity(settings.city);
+    setPhone(settings.phone);
+    setSiaNumber(settings.siaNumber);
+    setSipaNumber(settings.sipaNumber);
+    setPharmacistName(settings.pharmacistName);
+    setReceiptFooter(settings.receiptFooter);
+    setPrinterPaperWidth(settings.printerPaperWidth);
+    setEnableTax(settings.enableTax);
+    setTaxRate(settings.taxRate);
+  }, [settings]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +84,40 @@ export const SettingsView: React.FC = () => {
     });
 
     setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    setTimeout(() => setSavedSuccess(false), 3500);
+  };
+
+  const handleBackupNow = () => {
+    exportBackupJSON();
+    const nowStr = new Date().toLocaleString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    setLastBackupTime(nowStr);
+    localStorage.setItem('apotekpos_last_backup_time', nowStr);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const content = evt.target?.result as string;
+      if (content) {
+        const result = importBackupJSON(content);
+        setRestoreFeedback(result);
+        setTimeout(() => setRestoreFeedback(null), 5000);
+      }
+    };
+    reader.readAsText(file);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -60,16 +129,130 @@ export const SettingsView: React.FC = () => {
             Pengaturan Apotek & Printer Thermal
           </h2>
           <p className="text-xs text-slate-500">
-            Konfigurasi identitas apotek, nomor legalitas resmi (SIA & SIPA), dan preferensi cetak struk kasir.
+            Kelola profil personal apotek, nama apoteker resmi (SIA & SIPA), printer struk kasir, serta backup & restore database JSON berkala.
           </p>
         </div>
 
         {savedSuccess && (
-          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 flex items-center gap-1.5 animate-in fade-in">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            Pengaturan Tersimpan!
+          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3.5 py-2 rounded-xl border border-emerald-200 flex items-center gap-1.5 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            Pengaturan & Profil Apoteker Berhasil Diperbarui!
           </span>
         )}
+      </div>
+
+      {/* SECTION: Backup & Restore Data JSON Secara Berkala */}
+      <div className="bg-gradient-to-br from-white to-slate-50 p-6 rounded-3xl border border-emerald-100 shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
+          <div className="flex items-center gap-2.5 text-slate-900">
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+              <Database className="w-5 h-5 text-emerald-700" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-slate-900">Backup & Restore Database JSON (Berkala)</h3>
+              <p className="text-[11px] text-slate-500">
+                Amankan seluruh data apotek (katalog obat, riwayat transaksi, mutasi stok, supplier, pelanggan, dan pengaturan) ke dalam file .JSON secara mandiri.
+              </p>
+            </div>
+          </div>
+
+          <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold">
+            <Sparkles className="w-3 h-3 text-emerald-600" />
+            Data Offline & Personal
+          </span>
+        </div>
+
+        {restoreFeedback && (
+          <div
+            className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center gap-2 border animate-in fade-in ${
+              restoreFeedback.success
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-rose-50 border-rose-200 text-rose-800'
+            }`}
+          >
+            {restoreFeedback.success ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            )}
+            <span>{restoreFeedback.message}</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Download Backup */}
+          <div className="p-4 bg-white rounded-2xl border border-slate-200 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <FileJson className="w-4 h-4 text-emerald-600" />
+                  Download Backup JSON Sekarang
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                  Lengkap
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Unduh file cadangan data JSON kapan saja sebelum tutup toko atau secara berkala harian/mingguan untuk menjaga keamanan data personal Anda.
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between gap-3 border-t border-slate-100">
+              <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {lastBackupTime ? `Terakhir: ${lastBackupTime}` : 'Belum pernah di-backup'}
+              </span>
+              <button
+                id="btn-backup-json"
+                type="button"
+                onClick={handleBackupNow}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 active:scale-95"
+              >
+                <Download className="w-4 h-4" />
+                <span>Backup JSON Berkala</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Restore Backup */}
+          <div className="p-4 bg-white rounded-2xl border border-slate-200 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Upload className="w-4 h-4 text-indigo-600" />
+                  Pulihkan / Restore dari File JSON
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                  Import
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Punya file backup dari komputer atau perangkat lain? Unggah file .json untuk memulihkan seluruh data apotek secara instan.
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between gap-3 border-t border-slate-100">
+              <span className="text-[10px] text-slate-400">Format: .json resmi ApotekPOS</span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={handleFileUpload}
+                className="hidden"
+                id="file-restore-input"
+              />
+              <button
+                id="btn-restore-json"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 active:scale-95"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Pilih File Backup JSON</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
@@ -137,13 +320,15 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Legalitas Apotek (SIA & SIPA) */}
+        {/* Legalitas Apotek (SIA, SIPA, & Nama Apoteker Pengelola) */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
           <div className="flex items-center gap-2 text-slate-800 pb-3 border-b border-slate-100">
             <Shield className="w-5 h-5 text-teal-600" />
             <div>
-              <h3 className="font-bold text-sm">Legalitas Farmasi Resmi (Dinkes & BPOM)</h3>
-              <p className="text-[11px] text-slate-400">Nomor izin akan tercetak pada kop struk dan kwitansi resmi pasien.</p>
+              <h3 className="font-bold text-sm">Legalitas Farmasi & Nama Apoteker Pengelola</h3>
+              <p className="text-[11px] text-slate-400">
+                Nama apoteker pengelola akan otomatis disinkronkan ke akun profil login, struk cetak kasir, dan kartu stok.
+              </p>
             </div>
           </div>
 
@@ -177,18 +362,27 @@ export const SettingsView: React.FC = () => {
             </div>
 
             <div>
-              <label className="font-semibold text-slate-700 block mb-1">
-                Nama Apoteker Pengelola (APA) *
+              <label className="font-semibold text-slate-700 block mb-1 flex items-center justify-between">
+                <span>Nama Apoteker Pengelola (APA) *</span>
+                <span className="text-[10px] text-emerald-600 font-bold">Sinkron Profil</span>
               </label>
               <input
+                id="input-pharmacist-name"
                 type="text"
                 required
                 value={pharmacistName}
                 onChange={(e) => setPharmacistName(e.target.value)}
-                placeholder="apt. Sari Dewi, S.Farm"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl font-semibold"
+                placeholder="Contoh: apt. Stefanus, S.Farm"
+                className="w-full px-3 py-2 border border-emerald-400 ring-1 ring-emerald-500/20 rounded-xl font-bold text-slate-800 bg-emerald-50/20"
               />
             </div>
+          </div>
+
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-[11px] text-slate-600 flex items-start gap-2">
+            <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <span>
+              Ketika Anda mengganti <strong>Nama Apoteker Pengelola</strong> di sini dan menekan <em>"Simpan Konfigurasi Apotek"</em>, nama akan otomatis langsung diperbarui pada profil admin yang sedang aktif (<strong>{currentUser.name}</strong>), kop struk belanja kasir, serta catatan mutasi.
+            </span>
           </div>
         </div>
 
@@ -284,7 +478,7 @@ export const SettingsView: React.FC = () => {
           <button
             id="btn-save-settings"
             type="submit"
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-lg shadow-emerald-700/20 transition-all flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-lg shadow-emerald-700/20 transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
           >
             <Save className="w-4 h-4" />
             Simpan Konfigurasi Apotek

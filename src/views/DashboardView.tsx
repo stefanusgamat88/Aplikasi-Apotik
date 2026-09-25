@@ -272,6 +272,17 @@ export const DashboardView: React.FC = () => {
             <Pill className="w-4 h-4" />
             Buka Kasir POS
           </button>
+          <button
+            onClick={() => {
+              // Switch role back or lock
+              login('kasir1', '1111', 'Shift Standar');
+            }}
+            className="px-3.5 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition-all flex items-center gap-1.5"
+            title="Kunci Akses Dashboard (Kembali ke Gerbang Login Admin)"
+          >
+            <Lock className="w-3.5 h-3.5 text-amber-400" />
+            <span>Kunci Dashboard</span>
+          </button>
         </div>
       </div>
 
