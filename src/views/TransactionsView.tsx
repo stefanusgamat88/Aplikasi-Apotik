@@ -27,6 +27,7 @@ import {
   formatRupiah,
   FinancialMetrics,
 } from '../utils/reportPdfGenerator';
+import { exportTransactionsRegisterXLSX } from '../utils/reportExcelGenerator';
 
 export const TransactionsView: React.FC = () => {
   const { transactions, openReceipt, voidTransaction, currentUser, openSupervisorPrompt, settings } = useApp();
@@ -141,22 +142,18 @@ export const TransactionsView: React.FC = () => {
     generateSalesReportPDF(filteredTransactions, settings, filterInfo, metricsData, currentUser.name);
   };
 
-  // Export CSV
-  const handleExportCSV = () => {
-    let csv = 'No. Faktur;Waktu;Kasir;Pelanggan;Metode;Total;Status;Item Dibeli\n';
-    filteredTransactions.forEach((t) => {
-      const items = t.items.map((i) => `${i.medicine.name} (${i.quantity} ${i.selectedUnit.name})`).join(' | ');
-      csv += `"${t.invoiceNumber}";"${t.timestamp}";"${t.cashierName}";"${t.customerName}";"${t.paymentMethod}";${t.total};"${t.status}";"${items}"\n`;
-    });
+  // Export Excel (.xlsx)
+  const handleExportXLSX = () => {
+    const periodLabel =
+      dateFilter === 'today'
+        ? 'Hari Ini'
+        : dateFilter === '7days'
+        ? '7 Hari Terakhir'
+        : dateFilter === 'month'
+        ? 'Bulan Ini'
+        : 'Seluruh Transaksi';
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Riwayat_Transaksi_${settings.pharmacyName.replace(/\s+/g, '_')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportTransactionsRegisterXLSX(filteredTransactions, settings, periodLabel);
   };
 
   return (
@@ -190,12 +187,13 @@ export const TransactionsView: React.FC = () => {
           </button>
 
           <button
-            onClick={handleExportCSV}
-            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-200"
-            title="Download CSV"
+            id="btn-export-excel-xlsx-transactions"
+            onClick={handleExportXLSX}
+            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-200 active:scale-95"
+            title="Download spreadsheet Excel (.xlsx)"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Ekspor Excel</span>
+            <span>Ekspor Excel (.xlsx)</span>
           </button>
 
           <button

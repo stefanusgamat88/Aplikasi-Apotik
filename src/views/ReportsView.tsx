@@ -31,6 +31,11 @@ import {
   formatRupiah,
   FinancialMetrics,
 } from '../utils/reportPdfGenerator';
+import {
+  exportSalesReportXLSX,
+  exportProfitLossXLSX,
+  exportStockMovementsXLSX,
+} from '../utils/reportExcelGenerator';
 
 export const ReportsView: React.FC = () => {
   const { transactions, stockMovements, medicines, settings, openReceipt, currentUser } = useApp();
@@ -171,40 +176,23 @@ export const ReportsView: React.FC = () => {
     }
   };
 
-  const handleExportCSV = () => {
-    if (reportType === 'sales') {
-      let csv = 'No. Faktur;Waktu;Kasir;Pelanggan;Metode Bayar;Subtotal;Diskon;Total Akhir;HPP;Laba Bersih;Status;Daftar Item\n';
-      filteredTxs.forEach((t) => {
-        const items = t.items.map((it) => `${it.medicine.name} (${it.quantity} ${it.selectedUnit.name})`).join(' | ');
-        csv += `"${t.invoiceNumber}";"${t.timestamp}";"${t.cashierName}";"${t.customerName || 'Umum'}";"${t.paymentMethod}";${t.subtotal};${t.discount};${t.total};${t.totalHPP};${t.netProfit};"${t.status}";"${items}"\n`;
-      });
-      downloadFile(csv, `Laporan_Penjualan_${settings.pharmacyName.replace(/\s+/g, '_')}_${startDate}_${endDate}.csv`, 'text/csv;charset=utf-8;');
-    } else if (reportType === 'profit') {
-      let csv = 'No. Faktur;Tanggal;Item Terjual;Omzet Jual (Rp);HPP Modal (Rp);Laba Bersih (Rp);Margin (%)\n';
-      filteredTxs.forEach((t) => {
-        const margin = t.total > 0 ? ((t.netProfit / t.total) * 100).toFixed(1) : '0';
-        const items = t.items.map((it) => it.medicine.name).join(', ');
-        csv += `"${t.invoiceNumber}";"${t.timestamp}";"${items}";${t.total};${t.totalHPP};${t.netProfit};${margin}%\n`;
-      });
-      downloadFile(csv, `Laporan_Laba_Rugi_${settings.pharmacyName.replace(/\s+/g, '_')}_${startDate}_${endDate}.csv`, 'text/csv;charset=utf-8;');
-    } else {
-      let csv = 'Tanggal;Nama Obat;Tipe;Perubahan Qty;Satuan;Saldo Awal;Saldo Akhir;Referensi;Operator\n';
-      stockMovements.forEach((s) => {
-        csv += `"${s.date}";"${s.medicineName}";"${s.type}";${s.qtyChange};"${s.unit}";${s.previousStock};${s.currentStock};"${s.refNumber}";"${s.operator}"\n`;
-      });
-      downloadFile(csv, `Laporan_Mutasi_Stok_${settings.pharmacyName.replace(/\s+/g, '_')}_${startDate}_${endDate}.csv`, 'text/csv;charset=utf-8;');
-    }
-  };
+  const handleExportXLSX = () => {
+    const filterInfo = {
+      periodLabel,
+      startDate,
+      endDate,
+      cashierName: filterCashier !== 'all' ? filterCashier : undefined,
+      paymentMethod: filterMethod !== 'all' ? filterMethod : undefined,
+      statusLabel: filterStatus === 'all' ? 'Semua' : filterStatus === 'completed' ? 'Lunas' : 'Void',
+    };
 
-  const downloadFile = (content: string, filename: string, type: string) => {
-    const blob = new Blob([content], { type });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (reportType === 'sales') {
+      exportSalesReportXLSX(filteredTxs, settings, filterInfo, metrics, currentUser.name);
+    } else if (reportType === 'profit') {
+      exportProfitLossXLSX(filteredTxs, settings, filterInfo, metrics, currentUser.name);
+    } else {
+      exportStockMovementsXLSX(stockMovements, settings, periodLabel);
+    }
   };
 
   return (
@@ -239,13 +227,13 @@ export const ReportsView: React.FC = () => {
           </button>
 
           <button
-            id="btn-export-excel-csv"
-            onClick={handleExportCSV}
-            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-200"
-            title="Download spreadsheet CSV"
+            id="btn-export-excel-xlsx"
+            onClick={handleExportXLSX}
+            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-200 active:scale-95"
+            title="Download spreadsheet Excel (.xlsx)"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Ekspor Excel</span>
+            <span>Ekspor Excel (.xlsx)</span>
           </button>
 
           <button
