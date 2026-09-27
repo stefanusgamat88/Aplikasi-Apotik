@@ -30,9 +30,19 @@ import {
   FinancialMetrics,
 } from '../utils/reportPdfGenerator';
 import { exportTransactionsRegisterXLSX } from '../utils/reportExcelGenerator';
+import { MonthlyExcelExportModal } from '../components/MonthlyExcelExportModal';
 
 export const TransactionsView: React.FC = () => {
-  const { transactions, openReceipt, voidTransaction, currentUser, openSupervisorPrompt, settings, customers } = useApp();
+  const {
+    transactions,
+    stockMovements,
+    openReceipt,
+    voidTransaction,
+    currentUser,
+    openSupervisorPrompt,
+    settings,
+    customers,
+  } = useApp();
 
   // Audit Filter States
   const [search, setSearch] = useState('');
@@ -43,6 +53,9 @@ export const TransactionsView: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
   const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
   const [customerQuery, setCustomerQuery] = useState<string>('');
+
+  // Monthly archive export modal state
+  const [showMonthlyExportModal, setShowMonthlyExportModal] = useState<boolean>(false);
 
   // Accordion row expansion
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
@@ -302,10 +315,20 @@ export const TransactionsView: React.FC = () => {
             id="btn-export-excel-xlsx-transactions"
             onClick={handleExportXLSX}
             className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-200 active:scale-95"
-            title="Download spreadsheet Excel (.xlsx)"
+            title="Download spreadsheet Excel (.xlsx) dari filter saat ini"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
             <span>Ekspor Excel (.xlsx)</span>
+          </button>
+
+          <button
+            id="btn-export-monthly-archive-transactions"
+            onClick={() => setShowMonthlyExportModal(true)}
+            className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-colors flex items-center gap-1.5 border border-emerald-300 shadow-2xs active:scale-95 cursor-pointer"
+            title="Ekspor Buku Kerja Arsip Bulanan Multi-Sheet (.xlsx)"
+          >
+            <Calendar className="w-4 h-4 text-emerald-700" />
+            <span>Arsip Bulanan (.xlsx)</span>
           </button>
 
           <button
@@ -890,6 +913,16 @@ export const TransactionsView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: Ekspor Arsip Bulanan Excel (.xlsx) */}
+      <MonthlyExcelExportModal
+        isOpen={showMonthlyExportModal}
+        onClose={() => setShowMonthlyExportModal(false)}
+        transactions={transactions}
+        stockMovements={stockMovements}
+        settings={settings}
+        defaultPharmacistName={currentUser.name}
+      />
     </div>
   );
 };
