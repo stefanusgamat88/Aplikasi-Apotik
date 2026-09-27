@@ -21,7 +21,7 @@ export const ReceiptModal: React.FC = () => {
       )
       .join('\n');
 
-    const text = `*STRUK PEMBELIAN RESMI*\n*${settings.pharmacyName.toUpperCase()}*\n${settings.address}\nTelp: ${settings.phone}\n${settings.siaNumber}\n--------------------------------\nNo. Faktur: ${activeReceipt.invoiceNumber}\nTanggal: ${new Date(activeReceipt.timestamp).toLocaleString('id-ID')}\nKasir: ${activeReceipt.cashierName}\nPelanggan: ${activeReceipt.customerName}\n--------------------------------\n${itemsText}\n--------------------------------\n*TOTAL: Rp ${activeReceipt.total.toLocaleString('id-ID')}*\nBayar: Rp ${activeReceipt.amountPaid.toLocaleString('id-ID')} (${activeReceipt.paymentMethod.toUpperCase()})\nKembali: Rp ${activeReceipt.change.toLocaleString('id-ID')}\n--------------------------------\n${settings.receiptFooter}`;
+    const text = `*STRUK PEMBELIAN RESMI*\n*${settings.pharmacyName.toUpperCase()}*\n${settings.address}\nTelp: ${settings.phone}\n${settings.siaNumber}\n--------------------------------\nNo. Faktur: ${activeReceipt.invoiceNumber}\nTanggal: ${new Date(activeReceipt.timestamp).toLocaleString('id-ID')}\nKasir: ${activeReceipt.cashierName}\nPelanggan: ${activeReceipt.customerName}\n--------------------------------\n${itemsText}\n--------------------------------\n*TOTAL: Rp ${activeReceipt.total.toLocaleString('id-ID')}*\nBayar: Rp ${activeReceipt.amountPaid.toLocaleString('id-ID')} (${activeReceipt.paymentMethod.toUpperCase()})${activeReceipt.paymentRef ? `\nRef: ${activeReceipt.paymentRef}` : ''}\nKembali: Rp ${activeReceipt.change.toLocaleString('id-ID')}\n--------------------------------\n${settings.receiptFooter}`;
 
     const phone = activeReceipt.customerPhone ? activeReceipt.customerPhone.replace(/[^0-9]/g, '') : '';
     const cleanPhone = phone.startsWith('0') ? '62' + phone.substring(1) : phone;
@@ -160,6 +160,17 @@ export const ReceiptModal: React.FC = () => {
                 <span className="font-semibold uppercase">Bayar ({activeReceipt.paymentMethod}):</span>
                 <span>Rp {activeReceipt.amountPaid.toLocaleString('id-ID')}</span>
               </div>
+              {activeReceipt.paymentRef && (
+                <div className="flex justify-between text-slate-500 text-[10px] font-mono">
+                  <span>Ref:</span>
+                  <span>{activeReceipt.paymentRef}</span>
+                </div>
+              )}
+              {(activeReceipt.paymentMethod === 'qris' || activeReceipt.paymentMethod === 'dana') && (
+                <div className="text-[9px] text-emerald-800 font-semibold text-center py-0.5 bg-emerald-50 rounded border border-emerald-200">
+                  ✓ Terdeteksi Otomatis (Tanpa Input Manual • Zero-Leakage)
+                </div>
+              )}
               <div className="flex justify-between text-slate-700 font-bold">
                 <span>Kembalian:</span>
                 <span>Rp {activeReceipt.change.toLocaleString('id-ID')}</span>

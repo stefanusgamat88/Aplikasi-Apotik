@@ -59,6 +59,7 @@ interface AppContextType {
     paymentMethod: PaymentMethod;
     amountPaid: number;
     notes?: string;
+    paymentRef?: string;
   }) => Transaction | null;
   voidTransaction: (id: string, reason: string) => boolean;
   addMedicine: (medicineData: Omit<Medicine, 'id' | 'totalSold'>) => void;
@@ -404,6 +405,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     paymentMethod,
     amountPaid,
     notes,
+    paymentRef,
   }: {
     customerName: string;
     customerPhone?: string;
@@ -411,6 +413,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     paymentMethod: PaymentMethod;
     amountPaid: number;
     notes?: string;
+    paymentRef?: string;
   }): Transaction | null => {
     if (cart.length === 0) return null;
 
@@ -491,6 +494,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       amountPaid,
       change,
       paymentMethod,
+      paymentRef,
       branchId: settings.activeBranch,
       branchName:
         settings.branches.find((b) => b.id === settings.activeBranch)?.name || 'Cabang Utama',

@@ -18,9 +18,14 @@ import {
   Wallet,
   Smartphone,
   Lock,
+  ArrowRight,
+  Sparkles,
+  ShieldCheck,
+  CheckCircle2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Medicine, MedicineUnit, PaymentMethod } from '../types';
+import { DigitalPaymentModal } from '../components/DigitalPaymentModal';
 
 export const PosView: React.FC = () => {
   const {
@@ -48,6 +53,7 @@ export const PosView: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [cashGiven, setCashGiven] = useState<string>('');
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [showDigitalPaymentModal, setShowDigitalPaymentModal] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
   const [newCustomerAllergies, setNewCustomerAllergies] = useState('');
@@ -92,6 +98,12 @@ export const PosView: React.FC = () => {
   const handleProcessPayment = () => {
     if (!isPaymentValid) return;
 
+    // If QRIS or DANA: open the interactive dynamic digital payment modal
+    if (paymentMethod === 'qris' || paymentMethod === 'dana') {
+      setShowDigitalPaymentModal(true);
+      return;
+    }
+
     const finalAmountPaid = paymentMethod === 'cash' ? cashNum : grandTotal;
 
     const res = processTransaction({
@@ -104,6 +116,28 @@ export const PosView: React.FC = () => {
     });
 
     if (res) {
+      setCashGiven('');
+      setMobileCartView(false);
+    }
+  };
+
+  const handleDigitalPaymentSuccess = (details: {
+    method: 'qris' | 'dana';
+    refNumber: string;
+    paidAmount: number;
+  }) => {
+    const res = processTransaction({
+      customerName: currentCustomer.name,
+      customerPhone: currentCustomer.phone !== '-' ? currentCustomer.phone : undefined,
+      customerId: currentCustomer.id,
+      paymentMethod: details.method,
+      amountPaid: details.paidAmount,
+      paymentRef: details.refNumber,
+      notes: `Ref ${details.method.toUpperCase()}: ${details.refNumber}${currentCustomer.allergies ? ` • Catatan Alergi: ${currentCustomer.allergies}` : ''}`,
+    });
+
+    if (res) {
+      setShowDigitalPaymentModal(false);
       setCashGiven('');
       setMobileCartView(false);
     }
@@ -545,42 +579,92 @@ export const PosView: React.FC = () => {
             })}
           </div>
 
-          {/* QRIS / DANA Visual Banner */}
+          {/* QRIS / DANA Visual Banner with Auto Item Price Detection */}
           {paymentMethod === 'qris' && (
-            <div className="p-3 bg-white rounded-2xl border border-emerald-200 flex items-center gap-3">
-              <div className="w-14 h-14 bg-slate-900 rounded-xl p-1 flex items-center justify-center shrink-0">
-                <QrCode className="w-10 h-10 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-xs text-slate-800">QRIS Dinamis Apotek</span>
-                  <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
-                    BCA / GoPay / OVO
-                  </span>
+            <div className="p-3 bg-gradient-to-br from-emerald-50/90 to-teal-50/70 rounded-2xl border-2 border-emerald-200/80 shadow-2xs space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-slate-900 rounded-xl p-1 flex items-center justify-center shrink-0 shadow-xs">
+                  <QrCode className="w-8 h-8 text-white" />
                 </div>
-                <p className="text-[10px] text-slate-500 mt-0.5">
-                  NMID: ID102008892019 • Scan & bayar otomatis pas Rp {grandTotal.toLocaleString('id-ID')}
-                </p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-extrabold text-xs text-slate-800">QRIS Dinamis Apotek</span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-200/80 text-emerald-900 border border-emerald-300">
+                      Auto-Detect Aktif
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 font-semibold mt-0.5">
+                    Total Terdeteksi: <strong className="text-emerald-800 font-extrabold">Rp {grandTotal.toLocaleString('id-ID')}</strong> (Pas)
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white/80 p-2 rounded-xl border border-emerald-200/60 text-[10px] space-y-1">
+                <div className="flex items-center justify-between text-slate-600">
+                  <span className="flex items-center gap-1 font-semibold text-emerald-700">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    Harga {cart.length} item obat terdeteksi otomatis
+                  </span>
+                  <span className="font-bold text-slate-700">Bebas Input Manual</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-500 pt-0.5 border-t border-slate-100">
+                  <span className="flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                    Privasi Medis & Zero Data Leakage
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowDigitalPaymentModal(true)}
+                    className="text-emerald-700 font-bold hover:underline"
+                  >
+                    Buka QR Sekarang →
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
           {paymentMethod === 'dana' && (
-            <div className="p-3 bg-white rounded-2xl border border-sky-200 flex items-center gap-3">
-              <div className="w-14 h-14 bg-sky-600 rounded-xl p-1 flex flex-col items-center justify-center shrink-0 text-white">
-                <span className="font-black text-xs tracking-tighter">DANA</span>
-                <span className="text-[8px] font-semibold">Bisnis</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-xs text-slate-800">DANA Merchant Farmasi</span>
-                  <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-sky-100 text-sky-800">
-                    QR & Nomor
-                  </span>
+            <div className="p-3 bg-gradient-to-br from-sky-50/90 to-blue-50/70 rounded-2xl border-2 border-sky-200/80 shadow-2xs space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-sky-600 rounded-xl p-1 flex flex-col items-center justify-center shrink-0 text-white shadow-xs">
+                  <span className="font-black text-xs tracking-tighter">DANA</span>
+                  <span className="text-[7px] font-bold uppercase">Bisnis</span>
                 </div>
-                <p className="text-[10px] text-slate-500 mt-0.5">
-                  Nomor DANA: 0812-9000-8800 (Apotek Sehat Harmoni) • Nominal: Rp {grandTotal.toLocaleString('id-ID')}
-                </p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-extrabold text-xs text-slate-800">DANA Merchant Farmasi</span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-sky-200/80 text-sky-900 border border-sky-300">
+                      Auto-Detect Aktif
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 font-semibold mt-0.5">
+                    Total Terdeteksi: <strong className="text-sky-800 font-extrabold">Rp {grandTotal.toLocaleString('id-ID')}</strong> (Pas)
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white/80 p-2 rounded-xl border border-sky-200/60 text-[10px] space-y-1">
+                <div className="flex items-center justify-between text-slate-600">
+                  <span className="flex items-center gap-1 font-semibold text-sky-700">
+                    <CheckCircle2 className="w-3 h-3 text-sky-600" />
+                    Harga {cart.length} item obat terdeteksi otomatis
+                  </span>
+                  <span className="font-bold text-slate-700">Bebas Input Manual</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-500 pt-0.5 border-t border-slate-100">
+                  <span className="flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-sky-600" />
+                    Privasi Medis & Zero Data Leakage
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowDigitalPaymentModal(true)}
+                    className="text-sky-700 font-bold hover:underline"
+                  >
+                    Buka DANA Sekarang →
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -660,19 +744,40 @@ export const PosView: React.FC = () => {
             </div>
           </div>
 
-          {/* MAIN ACTION BUTTON: 👉 PROSES PEMBAYARAN */}
+          {/* MAIN ACTION BUTTON */}
           <button
             id="btn-process-payment"
             onClick={handleProcessPayment}
             disabled={!isPaymentValid}
             className={`w-full py-3.5 px-4 rounded-2xl font-extrabold text-sm text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
               isPaymentValid
-                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-700/30 hover:scale-[1.01] active:scale-[0.99] cursor-pointer'
+                ? paymentMethod === 'dana'
+                  ? 'bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 shadow-sky-700/30 hover:scale-[1.01] active:scale-[0.99] cursor-pointer'
+                  : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-700/30 hover:scale-[1.01] active:scale-[0.99] cursor-pointer'
                 : 'bg-slate-300 text-slate-500 shadow-none cursor-not-allowed'
             }`}
           >
-            <Check className="w-5 h-5" />
-            👉 PROSES PEMBAYARAN (Rp {grandTotal.toLocaleString('id-ID')})
+            {paymentMethod === 'qris' ? (
+              <>
+                <QrCode className="w-5 h-5" />
+                <span>👉 BUKA QRIS DINAMIS PEMBELI (Rp {grandTotal.toLocaleString('id-ID')})</span>
+              </>
+            ) : paymentMethod === 'dana' ? (
+              <>
+                <Smartphone className="w-5 h-5" />
+                <span>👉 BUKA DANA E-WALLET PEMBELI (Rp {grandTotal.toLocaleString('id-ID')})</span>
+              </>
+            ) : paymentMethod === 'cash' ? (
+              <>
+                <Banknote className="w-5 h-5" />
+                <span>👉 SELESAIKAN TRANSAKSI TUNAI (Rp {grandTotal.toLocaleString('id-ID')})</span>
+              </>
+            ) : (
+              <>
+                <CreditCard className="w-5 h-5" />
+                <span>👉 PROSES PEMBAYARAN {paymentMethod.toUpperCase()} (Rp {grandTotal.toLocaleString('id-ID')})</span>
+              </>
+            )}
           </button>
         </div>
       </div>
