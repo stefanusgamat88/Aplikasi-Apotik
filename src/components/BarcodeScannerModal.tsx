@@ -253,9 +253,10 @@ export const BarcodeScannerModal: React.FC = () => {
             type="button"
             onClick={() => setShowPrintModal(true)}
             className="flex-1 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+            title="Cetak Katalog Barcode atau Unduh File PDF"
           >
             <Printer className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Katalog Barcode</span>
+            <span>Katalog & PDF Barcode</span>
           </button>
           <button
             onClick={closeScanner}

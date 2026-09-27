@@ -15,8 +15,11 @@ import {
   Check,
   AlertCircle,
   Pill,
+  Loader2,
+  FileDown,
 } from 'lucide-react';
 import { Medicine, PharmacySettings } from '../types';
+import { downloadBarcodePDF } from '../utils/barcodePdfGenerator';
 
 interface BarcodePrintModalProps {
   isOpen: boolean;
@@ -49,8 +52,8 @@ const BarcodeSvg: React.FC<{
           font: 'monospace',
           fontSize,
           textMargin: 2,
-          margin: 2,
-          background: 'transparent',
+          margin: 4,
+          background: '#ffffff',
           lineColor: '#000000',
         });
       } catch (e) {
@@ -59,7 +62,121 @@ const BarcodeSvg: React.FC<{
     }
   }, [code, width, height, fontSize, displayValue]);
 
-  return <svg ref={svgRef} className="max-w-full h-auto mx-auto block" />;
+  return (
+    <svg
+      ref={svgRef}
+      className="max-w-full h-auto mx-auto block"
+      style={{ minHeight: `${height}px` }}
+    />
+  );
+};
+
+/**
+ * Isolated Iframe Print Function
+ * Bypasses parent container clipping (overflow:hidden, fixed modals, h-screen)
+ * to guarantee that browser 'Save as PDF' or physical printing NEVER produces a blank page.
+ */
+const printElementViaIframe = (elementId: string, title: string) => {
+  const element = document.getElementById(elementId);
+  if (!element) {
+    window.print();
+    return;
+  }
+
+  // Remove any previously attached print iframes
+  const existingIframe = document.getElementById('barcode-print-iframe');
+  if (existingIframe) {
+    existingIframe.remove();
+  }
+
+  const iframe = document.createElement('iframe');
+  iframe.id = 'barcode-print-iframe';
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.style.zIndex = '-9999';
+  iframe.style.visibility = 'hidden';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!doc) {
+    window.print();
+    return;
+  }
+
+  // Clone the printable element node
+  const cloned = element.cloneNode(true) as HTMLElement;
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="id">
+      <head>
+        <meta charset="utf-8" />
+        <title>${title}</title>
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            color: #0f172a !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+            font-size: 11px;
+            width: 100% !important;
+          }
+          .break-inside-avoid {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+          svg {
+            max-width: 100% !important;
+            height: auto !important;
+            display: block !important;
+            margin: 0 auto !important;
+          }
+          rect {
+            shape-rendering: crispEdges !important;
+          }
+        </style>
+      </head>
+      <body>
+        <div style="width: 100%; margin: 0; padding: 0; background: #ffffff;">
+          ${cloned.outerHTML}
+        </div>
+      </body>
+    </html>
+  `;
+
+  doc.open();
+  doc.write(htmlContent);
+  doc.close();
+
+  // Allow browser time to parse DOM and styles before printing
+  setTimeout(() => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch (e) {
+      console.warn('Iframe print error, falling back to window.print():', e);
+      window.print();
+    } finally {
+      setTimeout(() => {
+        iframe.remove();
+      }, 3000);
+    }
+  }, 350);
 };
 
 export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
@@ -76,6 +193,7 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
   const [labelCopies, setLabelCopies] = useState<number>(1);
   const [columnsCount, setColumnsCount] = useState<number>(3); // 2, 3, or 4 for catalog
   const [isPrinting, setIsPrinting] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
   // Initialize selected medicines
   useEffect(() => {
@@ -136,10 +254,31 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
 
   const handlePrint = () => {
     setIsPrinting(true);
+    printElementViaIframe('printable-barcode-sheet', `Katalog_Barcode_${settings.pharmacyName}`);
     setTimeout(() => {
-      window.print();
       setIsPrinting(false);
-    }, 250);
+    }, 1000);
+  };
+
+  const handleDownloadPDF = () => {
+    if (itemsToPrint.length === 0) return;
+    setIsExportingPdf(true);
+    setTimeout(() => {
+      try {
+        downloadBarcodePDF({
+          medicines: itemsToPrint,
+          settings,
+          mode: printMode,
+          columnsCount,
+          labelCopies,
+        });
+      } catch (err) {
+        console.error('Error generating barcode PDF:', err);
+        alert('Terjadi kesalahan saat membuat file PDF. Silakan coba lagi.');
+      } finally {
+        setIsExportingPdf(false);
+      }
+    }, 150);
   };
 
   return (
@@ -147,29 +286,43 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
       {/* Printable Document Styles */}
       <style>{`
         @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          #printable-barcode-sheet, #printable-barcode-sheet * {
-            visibility: visible !important;
-          }
-          #printable-barcode-sheet {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 10mm !important;
+          html, body {
+            height: auto !important;
+            overflow: visible !important;
             background: #ffffff !important;
-            box-shadow: none !important;
-            border: none !important;
+            color: #0f172a !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          #root, #root > div, main, .fixed, .overflow-y-auto, .overflow-hidden {
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+            position: static !important;
+            transform: none !important;
+            filter: none !important;
           }
           .no-print {
             display: none !important;
           }
+          #printable-barcode-sheet {
+            display: block !important;
+            position: static !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
           @page {
             size: A4 portrait;
             margin: 10mm;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
         }
       `}</style>
@@ -187,26 +340,44 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
                   Cetak Lembar Barcode Produk Apotek
                 </h3>
                 <span className="text-[10px] bg-emerald-500/25 text-emerald-300 font-extrabold px-2 py-0.5 rounded-full border border-emerald-400/30">
-                  Siap Scan Kasir
+                  Anti Blank Putih • Siap Scan
                 </span>
               </div>
               <p className="text-xs text-slate-300">
-                {settings.pharmacyName} • Format Barcode Standar CODE128 / EAN-13
+                {settings.pharmacyName} • Format Barcode Standar CODE128 / ASPI
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
+              id="btn-direct-download-pdf-top"
+              type="button"
+              onClick={handleDownloadPDF}
+              disabled={itemsToPrint.length === 0 || isExportingPdf}
+              className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Unduh file PDF resmi langsung ke komputer / perangkat"
+            >
+              {isExportingPdf ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <FileDown className="w-4 h-4" />
+              )}
+              <span>Unduh File PDF ({itemsToPrint.length * (printMode === 'labels' ? labelCopies : 1)})</span>
+            </button>
+
+            <button
               id="btn-trigger-print"
               type="button"
               onClick={handlePrint}
-              disabled={itemsToPrint.length === 0}
-              className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={itemsToPrint.length === 0 || isPrinting}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95 disabled:opacity-50 border border-slate-700"
+              title="Buka dialog cetak printer fisik atau Simpan sebagai PDF"
             >
-              <Printer className="w-4 h-4" />
-              <span>Cetak Sekarang ({itemsToPrint.length * (printMode === 'labels' ? labelCopies : 1)})</span>
+              <Printer className="w-4 h-4 text-emerald-400" />
+              <span className="hidden sm:inline">Dialog Cetak</span>
             </button>
+
             <button
               onClick={onClose}
               className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
@@ -528,10 +699,12 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
 
         {/* Modal Bottom Footer Actions */}
         <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2.5 shrink-0 no-print">
-          <div className="text-xs text-slate-500 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-emerald-600" />
+          <div className="text-xs text-slate-600 flex items-center gap-2">
+            <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+              <Check className="w-3.5 h-3.5" />
+            </div>
             <span>
-              Format barcode menggunakan resolusi tinggi sehingga mudah dibaca scanner laser meja kasir.
+              Format PDF & Print resolusi tinggi (CODE128 ASPI) • Bebas blank putih saat disimpan ke PDF.
             </span>
           </div>
 
@@ -539,18 +712,35 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors"
+              className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors"
             >
               Tutup
             </button>
             <button
+              id="btn-dialog-print-footer"
               type="button"
               onClick={handlePrint}
-              disabled={itemsToPrint.length === 0}
-              className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold shadow-md flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+              disabled={itemsToPrint.length === 0 || isPrinting}
+              className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold shadow-2xs flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+              title="Buka dialog cetak printer bawaan browser"
             >
-              <Printer className="w-4 h-4 text-emerald-400" />
-              <span>Buka Dialog Cetak / Simpan PDF</span>
+              <Printer className="w-4 h-4 text-slate-600" />
+              <span>Dialog Print Browser</span>
+            </button>
+            <button
+              id="btn-direct-download-pdf-footer"
+              type="button"
+              onClick={handleDownloadPDF}
+              disabled={itemsToPrint.length === 0 || isExportingPdf}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-extrabold shadow-md shadow-emerald-700/20 flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+              title="Unduh langsung file PDF resmi tanpa perlu dialog print"
+            >
+              {isExportingPdf ? (
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+              ) : (
+                <FileDown className="w-4 h-4 text-emerald-100" />
+              )}
+              <span>Unduh File PDF ({itemsToPrint.length * (printMode === 'labels' ? labelCopies : 1)})</span>
             </button>
           </div>
         </div>

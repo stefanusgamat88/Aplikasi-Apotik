@@ -343,10 +343,10 @@ export const MedicinesView: React.FC = () => {
               setShowBarcodePrintModal(true);
             }}
             className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
-            title="Cetak Lembar Katalog Barcode / Stiker Label"
+            title="Cetak Lembar Barcode / Simpan PDF / Stiker Label"
           >
             <Printer className="w-4 h-4 text-emerald-400" />
-            <span>Cetak Barcode</span>
+            <span>Cetak & PDF Barcode</span>
           </button>
           <button
             onClick={() => setActiveTab('stock-cards')}
