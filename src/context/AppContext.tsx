@@ -86,6 +86,11 @@ interface AppContextType {
   resetDemoData: () => void;
   exportBackupJSON: () => void;
   importBackupJSON: (jsonData: string) => { success: boolean; message: string };
+  // Profile Photo Management
+  isPhotoModalOpen: boolean;
+  openPhotoModal: () => void;
+  closePhotoModal: () => void;
+  updateProfilePhoto: (newAvatarUrl: string) => void;
   // Authentication & Session Management
   setUsers: React.Dispatch<React.SetStateAction<User[]>>;
   isLocked: boolean;
@@ -166,6 +171,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [isLocked, setIsLocked] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState<boolean>(false);
   const [supervisorPrompt, setSupervisorPrompt] = useState<{
     isOpen: boolean;
     title: string;
@@ -989,6 +995,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const openPhotoModal = () => setIsPhotoModalOpen(true);
+  const closePhotoModal = () => setIsPhotoModalOpen(false);
+
+  const updateProfilePhoto = (newAvatarUrl: string) => {
+    const updated = { ...currentUser, avatar: newAvatarUrl };
+    setCurrentUser(updated);
+    setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? updated : u)));
+    addAuditLog('Ganti Foto Profil', `Foto profil ${currentUser.name} berhasil diperbarui`, 'auth');
+  };
+
   const resetDemoData = () => {
     localStorage.clear();
     setMedicines(INITIAL_MEDICINES);
@@ -1049,6 +1065,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsLocked,
         isAuthModalOpen,
         setIsAuthModalOpen,
+        isPhotoModalOpen,
+        openPhotoModal,
+        closePhotoModal,
+        updateProfilePhoto,
         login,
         logout,
         lockSession,

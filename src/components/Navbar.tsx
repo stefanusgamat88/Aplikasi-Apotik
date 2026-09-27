@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   Bell,
+  Camera,
   Clock,
   KeyRound,
   Lock,
@@ -26,6 +27,7 @@ export const Navbar: React.FC = () => {
     currentUser,
     users,
     setCurrentUser,
+    openPhotoModal,
     smartInsights,
     openScanner,
     isOnline,
@@ -293,11 +295,16 @@ export const Navbar: React.FC = () => {
                   Pemilik Apotek (Owner)
                 </span>
               </div>
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.name}
-                className="w-8 h-8 rounded-full object-cover border border-emerald-500/40"
-              />
+              <div className="relative">
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.name}
+                  className="w-8 h-8 rounded-full object-cover border border-emerald-500/40"
+                />
+                <span className="absolute -bottom-0.5 -right-0.5 bg-emerald-600 text-white p-0.5 rounded-full shadow-xs">
+                  <Camera className="w-2.5 h-2.5" />
+                </span>
+              </div>
             </button>
 
             {showUserMenu && (
@@ -305,21 +312,45 @@ export const Navbar: React.FC = () => {
                 id="user-profile-dropdown"
                 className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2"
               >
-                <div className="px-4 py-2 border-b border-slate-100">
-                  <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Pemilik Aplikasi</p>
-                  <p className="text-sm font-bold text-slate-800 truncate">{currentUser.name}</p>
-                  <p className="text-xs text-slate-500 font-medium">Apoteker Pengelola Apotek</p>
+                <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Pemilik Aplikasi</p>
+                    <p className="text-sm font-bold text-slate-800 truncate">{currentUser.name}</p>
+                    <p className="text-xs text-slate-500 font-medium">Apoteker Pengelola Apotek</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      openPhotoModal();
+                      setShowUserMenu(false);
+                    }}
+                    title="Ganti Foto Profil"
+                    className="p-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors border border-emerald-200"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </button>
                 </div>
 
                 <div className="px-3 pt-2 space-y-1">
+                  <button
+                    id="btn-navbar-change-photo"
+                    onClick={() => {
+                      openPhotoModal();
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full text-left text-xs py-2 px-2.5 rounded-lg text-emerald-900 bg-emerald-50 hover:bg-emerald-100 font-bold flex items-center gap-2 transition-colors border border-emerald-200/60"
+                  >
+                    <Camera className="w-4 h-4 text-emerald-600" />
+                    <span>Ganti Foto Profil</span>
+                  </button>
+
                   <button
                     onClick={() => {
                       setActiveTab('auth');
                       setShowUserMenu(false);
                     }}
-                    className="w-full text-left text-xs py-2 px-2.5 rounded-lg text-emerald-900 bg-emerald-50 hover:bg-emerald-100 font-bold flex items-center gap-2 transition-colors border border-emerald-200/60"
+                    className="w-full text-left text-xs py-1.5 px-2.5 rounded-lg text-slate-700 hover:bg-slate-100 font-medium flex items-center gap-2 transition-colors"
                   >
-                    <KeyRound className="w-4 h-4 text-emerald-600" />
+                    <KeyRound className="w-3.5 h-3.5 text-slate-500" />
                     <span>Ganti PIN / Password Login</span>
                   </button>
 

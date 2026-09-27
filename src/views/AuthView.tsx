@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Save,
   Key,
+  Camera,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -32,6 +33,7 @@ export const AuthView: React.FC = () => {
     auditLogs,
     settings,
     setActiveTab,
+    openPhotoModal,
   } = useApp();
 
   // Active sub-tab: 'change-pin' | 'profile' | 'test-pin' | 'logs'
@@ -510,17 +512,32 @@ export const AuthView: React.FC = () => {
                 Identitas Pemilik Terdaftar
               </h3>
               <div className="flex items-center gap-3.5 mb-4">
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
-                  className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-500/40 shadow-xs"
-                />
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900">{currentUser.name}</h4>
+                <div
+                  className="relative group cursor-pointer shrink-0"
+                  onClick={openPhotoModal}
+                  title="Klik untuk ganti foto profil"
+                >
+                  <img
+                    src={currentUser.avatar}
+                    alt={currentUser.name}
+                    className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-500/40 shadow-xs group-hover:opacity-85 transition-opacity"
+                  />
+                  <div className="absolute inset-0 bg-slate-900/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white shadow-xs">
+                    <Camera className="w-5 h-5" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-bold text-slate-900 truncate">{currentUser.name}</h4>
                   <p className="text-xs text-emerald-600 font-semibold">Pemilik Apotek (Owner)</p>
-                  <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
-                    Super Administrator
-                  </span>
+                  <button
+                    type="button"
+                    id="btn-auth-change-photo-quick"
+                    onClick={openPhotoModal}
+                    className="mt-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold border border-emerald-200 flex items-center gap-1.5 transition-colors"
+                  >
+                    <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Ganti Foto Profil</span>
+                  </button>
                 </div>
               </div>
 
@@ -667,17 +684,38 @@ export const AuthView: React.FC = () => {
             </h3>
 
             <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
-                  className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500 shadow-sm"
-                />
-                <div>
-                  <h4 className="text-base font-bold text-slate-900">{currentUser.name}</h4>
-                  <p className="text-xs text-emerald-600 font-semibold">Owner & Penanggung Jawab Apotek</p>
-                  <p className="text-xs text-slate-400 mt-0.5">ID Pengguna: {currentUser.id}</p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-emerald-50/40 border border-emerald-200/60">
+                <div className="flex items-center gap-4">
+                  <div
+                    className="relative group cursor-pointer shrink-0"
+                    onClick={openPhotoModal}
+                    title="Klik untuk ganti foto profil"
+                  >
+                    <img
+                      src={currentUser.avatar}
+                      alt={currentUser.name}
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500 shadow-sm group-hover:opacity-85 transition-opacity"
+                    />
+                    <div className="absolute inset-0 bg-slate-900/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
+                      <Camera className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-base font-bold text-slate-900">{currentUser.name}</h4>
+                    <p className="text-xs text-emerald-600 font-semibold">Owner & Penanggung Jawab Apotek</p>
+                    <p className="text-xs text-slate-400 mt-0.5">ID Pengguna: {currentUser.id}</p>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  id="btn-auth-change-photo-profile-tab"
+                  onClick={openPhotoModal}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all shrink-0"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>Ganti Foto Profil</span>
+                </button>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2">

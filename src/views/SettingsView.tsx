@@ -17,6 +17,7 @@ import {
   Clock,
   Sparkles,
   Info,
+  Camera,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -29,6 +30,7 @@ export const SettingsView: React.FC = () => {
     importBackupJSON,
     currentUser,
     setActiveTab,
+    openPhotoModal,
   } = useApp();
 
   const [pharmacyName, setPharmacyName] = useState(settings.pharmacyName);
@@ -468,23 +470,48 @@ export const SettingsView: React.FC = () => {
 
         {/* Keamanan & PIN Pemilik Section */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
-            <div className="flex items-center gap-2 text-slate-800">
-              <Shield className="w-5 h-5 text-emerald-600" />
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-3">
+            <div className="flex items-center gap-3 text-slate-800">
+              <div
+                className="relative group cursor-pointer"
+                onClick={openPhotoModal}
+                title="Klik untuk ganti foto profil"
+              >
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.name}
+                  className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-500 shadow-xs group-hover:opacity-85 transition-opacity"
+                />
+                <div className="absolute inset-0 bg-slate-900/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
+                  <Camera className="w-4 h-4" />
+                </div>
+              </div>
               <div>
                 <h3 className="font-bold text-sm">Keamanan Akun & PIN Pemilik Aplikasi</h3>
                 <p className="text-[11px] text-slate-500">Mode personal murni pemilik apotek (Single Owner).</p>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('auth')}
-              className="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
-            >
-              <KeyRound className="w-4 h-4 text-emerald-600" />
-              <span>Buka Menu Ganti PIN / Sandi</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                id="btn-settings-change-photo"
+                onClick={openPhotoModal}
+                className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+              >
+                <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Ganti Foto Profil</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('auth')}
+                className="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+              >
+                <KeyRound className="w-4 h-4 text-emerald-600" />
+                <span>Buka Menu Ganti PIN / Sandi</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">

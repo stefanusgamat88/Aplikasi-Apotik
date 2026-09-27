@@ -7,6 +7,7 @@ import { BarcodeScannerModal } from './components/BarcodeScannerModal';
 import { LockScreenModal } from './components/LockScreenModal';
 import { SupervisorPinModal } from './components/SupervisorPinModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
+import { ChangeProfilePhotoModal } from './components/ChangeProfilePhotoModal';
 
 // Views
 import { PosView } from './views/PosView';
@@ -81,6 +82,7 @@ const MainLayout: React.FC = () => {
       {isLocked && <LockScreenModal />}
       <SupervisorPinModal />
       <AdminLoginModal />
+      <ChangeProfilePhotoModal />
     </div>
   );
 };
