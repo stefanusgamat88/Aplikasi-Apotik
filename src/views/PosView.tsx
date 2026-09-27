@@ -85,7 +85,10 @@ export const PosView: React.FC = () => {
   // Auto cash amount handling
   const cashNum = parseFloat(cashGiven.replace(/\./g, '')) || 0;
   const changeAmount = Math.max(0, cashNum - grandTotal);
-  const isPaymentValid = cart.length > 0 && (paymentMethod !== 'cash' || cashNum >= grandTotal);
+  const isPaymentValid =
+    paymentMethod === 'qris' || paymentMethod === 'dana'
+      ? true
+      : cart.length > 0 && (paymentMethod !== 'cash' || cashNum >= grandTotal);
 
   const handleQuickCash = (amount: number) => {
     setCashGiven(amount.toLocaleString('id-ID'));
@@ -597,6 +600,15 @@ export const PosView: React.FC = () => {
                     Total Terdeteksi: <strong className="text-emerald-800 font-extrabold">Rp {grandTotal.toLocaleString('id-ID')}</strong> (Pas)
                   </p>
                 </div>
+                <button
+                  id="btn-open-qris-top"
+                  type="button"
+                  onClick={() => setShowDigitalPaymentModal(true)}
+                  className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs transition-transform active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <QrCode className="w-3.5 h-3.5" />
+                  <span>Buka QRIS</span>
+                </button>
               </div>
 
               <div className="bg-white/80 p-2 rounded-xl border border-emerald-200/60 text-[10px] space-y-1">
@@ -613,11 +625,12 @@ export const PosView: React.FC = () => {
                     Privasi Medis & Zero Data Leakage
                   </span>
                   <button
+                    id="btn-open-qris-banner"
                     type="button"
                     onClick={() => setShowDigitalPaymentModal(true)}
-                    className="text-emerald-700 font-bold hover:underline"
+                    className="text-emerald-700 font-extrabold hover:underline cursor-pointer flex items-center gap-1"
                   >
-                    Buka QR Sekarang →
+                    <span>Tampilkan Layar QRIS →</span>
                   </button>
                 </div>
               </div>
@@ -642,6 +655,15 @@ export const PosView: React.FC = () => {
                     Total Terdeteksi: <strong className="text-sky-800 font-extrabold">Rp {grandTotal.toLocaleString('id-ID')}</strong> (Pas)
                   </p>
                 </div>
+                <button
+                  id="btn-open-dana-top"
+                  type="button"
+                  onClick={() => setShowDigitalPaymentModal(true)}
+                  className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold shadow-xs transition-transform active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>Buka DANA</span>
+                </button>
               </div>
 
               <div className="bg-white/80 p-2 rounded-xl border border-sky-200/60 text-[10px] space-y-1">
@@ -658,11 +680,12 @@ export const PosView: React.FC = () => {
                     Privasi Medis & Zero Data Leakage
                   </span>
                   <button
+                    id="btn-open-dana-banner"
                     type="button"
                     onClick={() => setShowDigitalPaymentModal(true)}
-                    className="text-sky-700 font-bold hover:underline"
+                    className="text-sky-700 font-extrabold hover:underline cursor-pointer flex items-center gap-1"
                   >
-                    Buka DANA Sekarang →
+                    <span>Tampilkan Layar DANA →</span>
                   </button>
                 </div>
               </div>
@@ -843,6 +866,22 @@ export const PosView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: Pembayaran Digital QRIS & DANA */}
+      <DigitalPaymentModal
+        isOpen={showDigitalPaymentModal}
+        onClose={() => setShowDigitalPaymentModal(false)}
+        onPaymentSuccess={handleDigitalPaymentSuccess}
+        cart={cart}
+        grandTotal={grandTotal}
+        cartSubtotal={cartSubtotal}
+        cartDiscount={0}
+        cartTax={cartTax}
+        customerName={currentCustomer?.name || 'Pelanggan Umum'}
+        customerPhone={currentCustomer?.phone !== '-' ? currentCustomer?.phone : undefined}
+        settings={settings}
+        initialMethod={paymentMethod === 'dana' ? 'dana' : 'qris'}
+      />
     </div>
   );
 };

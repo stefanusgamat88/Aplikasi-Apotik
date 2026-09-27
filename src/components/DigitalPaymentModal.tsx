@@ -167,14 +167,14 @@ export const DigitalPaymentModal: React.FC<DigitalPaymentModalProps> = ({
     if (!isOpen) return;
 
     const nmid = 'ID102008892019';
-    const cleanPharmacyName = settings.pharmacyName.replace(/[^a-zA-Z0-9 ]/g, '').toUpperCase();
-    const city = (settings.city || 'JAKARTA').toUpperCase();
+    const cleanPharmacyName = (settings?.pharmacyName || 'APOTEK').replace(/[^a-zA-Z0-9 ]/g, '').toUpperCase();
+    const city = (settings?.city || 'JAKARTA').toUpperCase();
 
     let payload = '';
 
     if (selectedMethod === 'qris') {
       // Formatted EMVCo QRIS dynamic payload (Point of Initiation Tag 01 = 12 Dynamic, with Tag 54 exact nominal)
-      const amountStr = grandTotal.toString();
+      const amountStr = Math.max(0, grandTotal).toString();
       const rawPayloadBeforeCRC = `00020101021226600016ID.CO.QRIS.WWW0118${nmid}0215${sessionRefNumber}52045912530336054${amountStr.length
         .toString()
         .padStart(2, '0')}${amountStr}5802ID59${cleanPharmacyName.length
@@ -187,7 +187,7 @@ export const DigitalPaymentModal: React.FC<DigitalPaymentModalProps> = ({
       payload = `${rawPayloadBeforeCRC}${checksum}`;
     } else {
       // DANA Bisnis Direct Deep Link with auto-locked amount
-      const safeMerchant = encodeURIComponent(settings.pharmacyName);
+      const safeMerchant = encodeURIComponent(settings?.pharmacyName || 'Apotek');
       payload = `https://link.dana.id/pay?merchant=${safeMerchant}&amount=${grandTotal}&ref=${sessionRefNumber}&orderId=${sessionRefNumber}&itemCount=${cart.length}`;
     }
 
@@ -442,7 +442,7 @@ export const DigitalPaymentModal: React.FC<DigitalPaymentModalProps> = ({
                       TOTAL HARGA ITEM OBAT OTOMATIS:
                     </span>
                     <span className="px-1.5 py-0.2 rounded bg-emerald-200/80 text-emerald-900 font-extrabold text-[9px]">
-                      Terkunci Otomatis
+                      {cart.length > 0 ? 'Terkunci Otomatis' : 'Menunggu Item Kasir'}
                     </span>
                   </div>
                   <span className="text-2xl font-black text-emerald-950 tracking-tight block mt-0.5">
@@ -459,6 +459,16 @@ export const DigitalPaymentModal: React.FC<DigitalPaymentModalProps> = ({
                   </span>
                 </div>
               </div>
+
+              {cart.length === 0 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-start gap-2.5 shadow-2xs">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-[11px] leading-relaxed">
+                    <strong className="block font-bold">Keranjang Kasir Masih Kosong:</strong>
+                    Silakan tutup modal ini dan tambahkan obat dari katalog POS. Sistem akan seketika mengunci nominal dan mendeteksi harga masing-masing obat ke dalam kode QRIS.
+                  </div>
+                </div>
+              )}
 
               {/* QR Code Container Card */}
               <div className="p-4 sm:p-5 bg-white rounded-3xl border-2 border-slate-200 shadow-sm flex flex-col items-center justify-center space-y-3 relative">
@@ -578,49 +588,59 @@ export const DigitalPaymentModal: React.FC<DigitalPaymentModalProps> = ({
               </div>
 
               {/* Items List */}
-              <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden text-xs">
-                {cart.map((item, idx) => (
-                  <div
-                    key={item.id}
-                    className="p-3 bg-white hover:bg-slate-50/80 transition-colors flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-[11px] flex items-center justify-center shrink-0 border border-emerald-200">
-                        {idx + 1}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="font-extrabold text-slate-800 truncate text-xs">
-                          {item.medicine.name}
-                        </p>
-                        <p className="text-[10px] text-slate-500">
-                          {item.quantity} {item.selectedUnit.name} × Rp{' '}
-                          {item.unitPrice.toLocaleString('id-ID')}
-                          {item.discountPercent > 0 && (
-                            <span className="text-rose-600 font-bold ml-1">
-                              (Diskon {item.discountPercent}%)
-                            </span>
-                          )}
-                          {item.medicine.activeSubstance && (
-                            <span className="block text-[9px] text-teal-700 font-medium">
-                              Zat Aktif: {item.medicine.activeSubstance}
-                            </span>
-                          )}
-                        </p>
+              {cart.length === 0 ? (
+                <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl text-center space-y-2">
+                  <Pill className="w-8 h-8 text-slate-400 mx-auto" />
+                  <p className="font-bold text-xs text-slate-700">Belum Ada Obat di Keranjang</p>
+                  <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+                    Katalog POS apotek mendeteksi otomatis zat aktif, satuan harga, diskon, dan nominal pembayaran begitu obat dimasukkan ke keranjang kasir.
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden text-xs">
+                  {cart.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className="p-3 bg-white hover:bg-slate-50/80 transition-colors flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-[11px] flex items-center justify-center shrink-0 border border-emerald-200">
+                          {idx + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-extrabold text-slate-800 truncate text-xs">
+                            {item.medicine.name}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            {item.quantity} {item.selectedUnit.name} × Rp{' '}
+                            {item.unitPrice.toLocaleString('id-ID')}
+                            {item.discountPercent > 0 && (
+                              <span className="text-rose-600 font-bold ml-1">
+                                (Diskon {item.discountPercent}%)
+                              </span>
+                            )}
+                            {item.medicine.genericName && (
+                              <span className="block text-[9px] text-teal-700 font-medium">
+                                Zat Aktif: {item.medicine.genericName}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="font-black text-slate-900 text-xs">
+                          Rp {item.subtotal.toLocaleString('id-ID')}
+                        </span>
+                        <span className="block text-[9px] text-emerald-600 font-bold flex items-center justify-end gap-0.5">
+                          <Check className="w-2.5 h-2.5" />
+                          Harga Terkunci
+                        </span>
                       </div>
                     </div>
-
-                    <div className="text-right shrink-0">
-                      <span className="font-black text-slate-900 text-xs">
-                        Rp {item.subtotal.toLocaleString('id-ID')}
-                      </span>
-                      <span className="block text-[9px] text-emerald-600 font-bold flex items-center justify-end gap-0.5">
-                        <Check className="w-2.5 h-2.5" />
-                        Harga Terkunci
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {/* Subtotal & Total Breakdown */}
               <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1.5 text-xs">
@@ -759,14 +779,23 @@ export const DigitalPaymentModal: React.FC<DigitalPaymentModalProps> = ({
               <button
                 id="btn-simulate-payment-success"
                 type="button"
-                disabled={isVerifying}
+                disabled={isVerifying || cart.length === 0}
                 onClick={handleSimulateCustomerPayment}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-md shadow-emerald-700/20 flex items-center justify-center gap-2 active:scale-95 transition-all"
+                className={`w-full sm:w-auto px-5 py-2.5 rounded-xl font-black text-xs shadow-md flex items-center justify-center gap-2 transition-all ${
+                  cart.length === 0
+                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-emerald-700/20 active:scale-95 cursor-pointer'
+                }`}
               >
                 {isVerifying ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
                     <span>Memverifikasi Sinyal Pembayaran...</span>
+                  </>
+                ) : cart.length === 0 ? (
+                  <>
+                    <AlertCircle className="w-4 h-4" />
+                    <span>Keranjang Kosong (Pilih Obat di Kasir)</span>
                   </>
                 ) : (
                   <>
