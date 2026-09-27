@@ -83,7 +83,7 @@ interface AppContextType {
   onBarcodeScanned: (code: string) => boolean;
   isOnline: boolean;
   syncStatus: 'synced' | 'syncing' | 'offline';
-  resetDemoData: () => void;
+  resetDemoData: () => { success: boolean; message: string };
   exportBackupJSON: () => void;
   importBackupJSON: (jsonData: string) => { success: boolean; message: string };
   // Profile Photo Management
@@ -1005,16 +1005,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditLog('Ganti Foto Profil', `Foto profil ${currentUser.name} berhasil diperbarui`, 'auth');
   };
 
-  const resetDemoData = () => {
-    localStorage.clear();
-    setMedicines(INITIAL_MEDICINES);
-    setTransactions(INITIAL_TRANSACTIONS);
-    setStockMovements(INITIAL_STOCK_MOVEMENTS);
-    setSuppliers(INITIAL_SUPPLIERS);
-    setCustomers(INITIAL_CUSTOMERS);
-    setSettings(INITIAL_SETTINGS);
-    setCart([]);
-    window.location.reload();
+  const resetDemoData = (): { success: boolean; message: string } => {
+    try {
+      // 1. Explicitly clear all apotekpos_ keys from localStorage
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith(LOCAL_STORAGE_PREFIX)) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      // 2. Clear known storage keys
+      localStorage.removeItem(LOCAL_STORAGE_PREFIX + 'medicines');
+      localStorage.removeItem(LOCAL_STORAGE_PREFIX + 'transactions');
+      localStorage.removeItem(LOCAL_STORAGE_PREFIX + 'stock_movements');
+      localStorage.removeItem(LOCAL_STORAGE_PREFIX + 'suppliers');
+      localStorage.removeItem(LOCAL_STORAGE_PREFIX + 'customers');
+      localStorage.removeItem(LOCAL_STORAGE_PREFIX + 'settings');
+      localStorage.removeItem(LOCAL_STORAGE_PREFIX + 'users');
+      localStorage.removeItem(LOCAL_STORAGE_PREFIX + 'current_user');
+      localStorage.removeItem(LOCAL_STORAGE_PREFIX + 'audit_logs');
+      localStorage.removeItem(LOCAL_STORAGE_PREFIX + 'last_backup_time');
+
+      // 3. Immediately persist initial data into localStorage
+      saveStorage('medicines', INITIAL_MEDICINES);
+      saveStorage('transactions', INITIAL_TRANSACTIONS);
+      saveStorage('stock_movements', INITIAL_STOCK_MOVEMENTS);
+      saveStorage('suppliers', INITIAL_SUPPLIERS);
+      saveStorage('customers', INITIAL_CUSTOMERS);
+      saveStorage('settings', INITIAL_SETTINGS);
+      saveStorage('users', INITIAL_USERS);
+      saveStorage('current_user', INITIAL_USERS[0]);
+
+      const resetAuditLog: AuditLog = {
+        id: 'log-' + Date.now(),
+        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+        userId: INITIAL_USERS[0].id,
+        userName: INITIAL_USERS[0].name,
+        userRole: INITIAL_USERS[0].role,
+        action: 'Reset Database',
+        details: 'Seluruh database apotek berhasil direset ulang ke pengaturan dan data awal bawaan',
+        type: 'system',
+      };
+      saveStorage('audit_logs', [resetAuditLog]);
+
+      // 4. Update all React states in memory immediately
+      setMedicines(INITIAL_MEDICINES);
+      setTransactions(INITIAL_TRANSACTIONS);
+      setStockMovements(INITIAL_STOCK_MOVEMENTS);
+      setSuppliers(INITIAL_SUPPLIERS);
+      setCustomers(INITIAL_CUSTOMERS);
+      setSettings(INITIAL_SETTINGS);
+      setUsers(INITIAL_USERS);
+      setCurrentUser(INITIAL_USERS[0]);
+      setCart([]);
+      setActiveReceipt(null);
+      setIsLocked(false);
+      setAuditLogs([resetAuditLog]);
+
+      return {
+        success: true,
+        message: 'Database apotek berhasil direset ulang ke pengaturan dan data awal bawaan!',
+      };
+    } catch (e: any) {
+      console.error('Error during resetDemoData:', e);
+      return {
+        success: false,
+        message: 'Gagal mereset database: ' + (e.message || 'Terjadi kesalahan sistem'),
+      };
+    }
   };
 
   // Smart Analytics calculations

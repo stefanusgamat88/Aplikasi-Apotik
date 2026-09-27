@@ -18,6 +18,7 @@ import {
   Sparkles,
   Info,
   Camera,
+  X,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -48,11 +49,25 @@ export const SettingsView: React.FC = () => {
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [restoreFeedback, setRestoreFeedback] = useState<{ success: boolean; message: string } | null>(null);
+  const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
+  const [resetFeedback, setResetFeedback] = useState<{ success: boolean; message: string } | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
   const [lastBackupTime, setLastBackupTime] = useState<string | null>(() => {
     return localStorage.getItem('apotekpos_last_backup_time');
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExecuteReset = () => {
+    setIsResetting(true);
+    setTimeout(() => {
+      const res = resetDemoData();
+      setIsResetting(false);
+      setShowResetConfirmModal(false);
+      setResetFeedback(res);
+      setTimeout(() => setResetFeedback(null), 6000);
+    }, 250);
+  };
 
   // Synchronize local input state whenever context settings change (e.g. from restore or other views)
   useEffect(() => {
@@ -145,6 +160,26 @@ export const SettingsView: React.FC = () => {
         )}
       </div>
 
+      {resetFeedback && (
+        <div
+          className={`p-4 rounded-3xl text-xs font-bold flex items-center gap-3 border shadow-xs animate-in fade-in ${
+            resetFeedback.success
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+              : 'bg-rose-50 border-rose-300 text-rose-900'
+          }`}
+        >
+          {resetFeedback.success ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          ) : (
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+          )}
+          <div className="flex-1">
+            <p className="text-sm font-black">{resetFeedback.success ? '✓ Reset Database Berhasil!' : 'Gagal Mereset Database'}</p>
+            <p className="text-xs font-medium text-slate-600 mt-0.5">{resetFeedback.message}</p>
+          </div>
+        </div>
+      )}
+
       {/* SECTION: Backup & Restore Data JSON Secara Berkala */}
       <div className="bg-gradient-to-br from-white to-slate-50 p-6 rounded-3xl border border-emerald-100 shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
@@ -183,37 +218,37 @@ export const SettingsView: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Download Backup */}
           <div className="p-4 bg-white rounded-2xl border border-slate-200 flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                   <FileJson className="w-4 h-4 text-emerald-600" />
-                  Download Backup JSON Sekarang
+                  Download Backup JSON
                 </span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                   Lengkap
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                Unduh file cadangan data JSON kapan saja sebelum tutup toko atau secara berkala harian/mingguan untuk menjaga keamanan data personal Anda.
+                Unduh file cadangan data JSON kapan saja sebelum tutup toko untuk menjaga keamanan data personal Anda.
               </p>
             </div>
 
             <div className="pt-2 flex items-center justify-between gap-3 border-t border-slate-100">
               <span className="text-[10px] text-slate-400 flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {lastBackupTime ? `Terakhir: ${lastBackupTime}` : 'Belum pernah di-backup'}
+                {lastBackupTime ? `Terakhir: ${lastBackupTime}` : 'Belum di-backup'}
               </span>
               <button
                 id="btn-backup-json"
                 type="button"
                 onClick={handleBackupNow}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 active:scale-95"
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 active:scale-95"
               >
                 <Download className="w-4 h-4" />
-                <span>Backup JSON Berkala</span>
+                <span>Backup JSON</span>
               </button>
             </div>
           </div>
@@ -224,19 +259,19 @@ export const SettingsView: React.FC = () => {
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                   <Upload className="w-4 h-4 text-indigo-600" />
-                  Pulihkan / Restore dari File JSON
+                  Restore dari File JSON
                 </span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                   Import
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                Punya file backup dari komputer atau perangkat lain? Unggah file .json untuk memulihkan seluruh data apotek secara instan.
+                Punya file backup dari komputer atau perangkat lain? Unggah file .json untuk memulihkan seluruh data apotek.
               </p>
             </div>
 
             <div className="pt-2 flex items-center justify-between gap-3 border-t border-slate-100">
-              <span className="text-[10px] text-slate-400">Format: .json resmi ApotekPOS</span>
+              <span className="text-[10px] text-slate-400">Format: .json ApotekPOS</span>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -249,10 +284,41 @@ export const SettingsView: React.FC = () => {
                 id="btn-restore-json"
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 active:scale-95"
+                className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 active:scale-95"
               >
                 <Upload className="w-4 h-4" />
-                <span>Pilih File Backup JSON</span>
+                <span>Pilih File</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Card 3: Reset Ulang Database */}
+          <div className="p-4 bg-white rounded-2xl border border-rose-200 flex flex-col justify-between space-y-3 bg-gradient-to-br from-white to-rose-50/20">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <RotateCcw className="w-4 h-4 text-rose-600" />
+                  Reset Ulang Database
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">
+                  Pabrik
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Kembalikan seluruh master obat, transaksi penjualan kasir, dan pengaturan ke data awal bawaan apotek.
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between gap-3 border-t border-slate-100">
+              <span className="text-[10px] text-slate-400">Kembali ke setelan awal</span>
+              <button
+                id="btn-reset-database-card"
+                type="button"
+                onClick={() => setShowResetConfirmModal(true)}
+                className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+                <span>Reset Database</span>
               </button>
             </div>
           </div>
@@ -542,9 +608,10 @@ export const SettingsView: React.FC = () => {
         {/* Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
           <button
+            id="btn-reset-database-bottom"
             type="button"
-            onClick={resetDemoData}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            onClick={() => setShowResetConfirmModal(true)}
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-rose-300 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-colors flex items-center justify-center gap-2 active:scale-95"
           >
             <RotateCcw className="w-4 h-4" />
             Reset Ulang Database Demo
@@ -560,6 +627,72 @@ export const SettingsView: React.FC = () => {
           </button>
         </div>
       </form>
+
+      {/* Modal Konfirmasi Reset Ulang Database */}
+      {showResetConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95 text-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5 text-rose-600">
+                <div className="w-9 h-9 rounded-2xl bg-rose-100 flex items-center justify-center">
+                  <RotateCcw className="w-5 h-5 text-rose-700" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">
+                    Konfirmasi Reset Ulang Database
+                  </h3>
+                  <p className="text-[11px] text-slate-400">Kembalikan sistem ke data pabrik</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowResetConfirmModal(false)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-900 space-y-2">
+              <p className="font-bold flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                Perhatian: Tindakan ini akan mengembalikan:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-[11px] text-rose-800">
+                <li>Seluruh riwayat faktur kasir ke data demo awal</li>
+                <li>Stok obat dan pergerakan mutasi kartu stok</li>
+                <li>Data supplier dan pelanggan kembali ke awal</li>
+                <li>Pengaturan apotek & akun pemilik (username: admin, PIN: 1234)</li>
+              </ul>
+            </div>
+
+            <p className="text-slate-600 text-xs leading-relaxed">
+              Seluruh data master obat dan transaksi bawaan apotek akan dipulihkan secara bersih. Apakah Anda yakin ingin mereset sekarang?
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirmModal(false)}
+                disabled={isResetting}
+                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold hover:bg-slate-50"
+              >
+                Batal
+              </button>
+              <button
+                id="btn-confirm-execute-reset"
+                type="button"
+                onClick={handleExecuteReset}
+                disabled={isResetting}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-md shadow-rose-600/20 flex items-center gap-1.5 active:scale-95 disabled:opacity-60"
+              >
+                <RotateCcw className={`w-4 h-4 ${isResetting ? 'animate-spin' : ''}`} />
+                <span>{isResetting ? 'Mereset Database...' : 'Ya, Reset Database Sekarang'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
