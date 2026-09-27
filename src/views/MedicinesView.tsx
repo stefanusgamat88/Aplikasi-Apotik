@@ -15,6 +15,10 @@ import {
   Sparkles,
   Check,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Medicine, MedicineUnit } from '../types';
@@ -35,6 +39,10 @@ export const MedicinesView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'low' | 'near_expiry'>('all');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
   // Add / Edit Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -135,6 +143,47 @@ export const MedicinesView: React.FC = () => {
 
     return matchSearch && matchCategory && matchStatus;
   });
+
+  // Reset to first page when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterCategory, filterStatus, itemsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredMedicines.length / itemsPerPage));
+
+  // Clamp current page within valid range
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedMedicines = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredMedicines.slice(start, start + itemsPerPage);
+  }, [filteredMedicines, currentPage, itemsPerPage]);
+
+  const startIndex = filteredMedicines.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+  const endIndex = Math.min(currentPage * itemsPerPage, filteredMedicines.length);
+
+  // Generate numbered pagination items with smart ellipsis
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
 
   const handleOpenAdd = () => {
     setEditingId(null);
@@ -370,134 +419,255 @@ export const MedicinesView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredMedicines.map((med) => {
-                const isLow = med.stock <= med.minStock;
-                const daysToExp =
-                  (new Date(med.expiredDate).getTime() - new Date('2026-09-22').getTime()) /
-                  (1000 * 3600 * 24);
-                const isNearExp = daysToExp <= 60;
+              {filteredMedicines.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <Pill className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                    <p className="font-bold text-slate-700 text-sm">Tidak Ada Obat Ditemukan</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Coba sesuaikan kata kunci pencarian atau ganti filter kategori/status.
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                paginatedMedicines.map((med) => {
+                  const isLow = med.stock <= med.minStock;
+                  const daysToExp =
+                    (new Date(med.expiredDate).getTime() - new Date('2026-09-22').getTime()) /
+                    (1000 * 3600 * 24);
+                  const isNearExp = daysToExp <= 60;
 
-                return (
-                  <tr key={med.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2.5">
-                        <img
-                          src={med.imageUrl}
-                          alt={med.name}
-                          className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <p className="font-bold text-slate-800 text-xs truncate">{med.name}</p>
-                          <p className="text-[11px] text-slate-400 italic truncate">{med.genericName}</p>
-                          <p className="text-[10px] text-slate-400 font-mono">
-                            SKU: {med.sku} • Barcode: {med.barcode}
+                  return (
+                    <tr key={med.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <img
+                            src={med.imageUrl}
+                            alt={med.name}
+                            className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-800 text-xs truncate">{med.name}</p>
+                            <p className="text-[11px] text-slate-400 italic truncate">{med.genericName}</p>
+                            <p className="text-[10px] text-slate-400 font-mono">
+                              SKU: {med.sku} • Barcode: {med.barcode}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-3">
+                        <div className="space-y-1">
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md inline-block ${
+                              med.category === 'Obat Keras'
+                                ? 'bg-rose-100 text-rose-700'
+                                : med.category === 'Obat Bebas Terbatas'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-emerald-100 text-emerald-700'
+                            }`}
+                          >
+                            {med.category}
+                          </span>
+                          <p className="text-[10px] text-slate-500 font-mono">{med.locationRack}</p>
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-3">
+                        <div className="flex flex-wrap gap-1">
+                          {med.units.map((u) => (
+                            <span
+                              key={u.name}
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium"
+                            >
+                              {u.name}: Rp {u.price.toLocaleString('id-ID')}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-3 text-center">
+                        <div className="inline-flex flex-col items-center">
+                          <span
+                            className={`font-black text-xs px-2 py-0.5 rounded-md ${
+                              isLow
+                                ? 'bg-rose-100 text-rose-700 animate-pulse'
+                                : 'bg-emerald-50 text-emerald-800'
+                            }`}
+                          >
+                            {med.stock} {med.baseUnit}
+                          </span>
+                          <span className="text-[9px] text-slate-400 mt-0.5">Min: {med.minStock}</span>
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-3">
+                        <div className="space-y-0.5">
+                          <p className="font-mono text-[11px] text-slate-700">{med.batchNumber}</p>
+                          <span
+                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded inline-block ${
+                              isNearExp
+                                ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                : 'text-slate-500'
+                            }`}
+                          >
+                            Exp: {med.expiredDate}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-3">
+                        <div className="space-y-0.5">
+                          <p className="text-[11px] text-slate-400">
+                            HPP: Rp {med.buyPrice.toLocaleString('id-ID')}
+                          </p>
+                          <p className="font-bold text-xs text-emerald-700">
+                            Jual: Rp {med.sellPrice.toLocaleString('id-ID')}
                           </p>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td className="py-3 px-3">
-                      <div className="space-y-1">
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md inline-block ${
-                            med.category === 'Obat Keras'
-                              ? 'bg-rose-100 text-rose-700'
-                              : med.category === 'Obat Bebas Terbatas'
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-emerald-100 text-emerald-700'
-                          }`}
-                        >
-                          {med.category}
-                        </span>
-                        <p className="text-[10px] text-slate-500 font-mono">{med.locationRack}</p>
-                      </div>
-                    </td>
-
-                    <td className="py-3 px-3">
-                      <div className="flex flex-wrap gap-1">
-                        {med.units.map((u) => (
-                          <span
-                            key={u.name}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium"
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleOpenRestock(med)}
+                            className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold transition-colors flex items-center gap-1"
+                            title="Tambah Stok Masuk / Restock"
                           >
-                            {u.name}: Rp {u.price.toLocaleString('id-ID')}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-
-                    <td className="py-3 px-3 text-center">
-                      <div className="inline-flex flex-col items-center">
-                        <span
-                          className={`font-black text-xs px-2 py-0.5 rounded-md ${
-                            isLow
-                              ? 'bg-rose-100 text-rose-700 animate-pulse'
-                              : 'bg-emerald-50 text-emerald-800'
-                          }`}
-                        >
-                          {med.stock} {med.baseUnit}
-                        </span>
-                        <span className="text-[9px] text-slate-400 mt-0.5">Min: {med.minStock}</span>
-                      </div>
-                    </td>
-
-                    <td className="py-3 px-3">
-                      <div className="space-y-0.5">
-                        <p className="font-mono text-[11px] text-slate-700">{med.batchNumber}</p>
-                        <span
-                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded inline-block ${
-                            isNearExp
-                              ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                              : 'text-slate-500'
-                          }`}
-                        >
-                          Exp: {med.expiredDate}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="py-3 px-3">
-                      <div className="space-y-0.5">
-                        <p className="text-[11px] text-slate-400">
-                          HPP: Rp {med.buyPrice.toLocaleString('id-ID')}
-                        </p>
-                        <p className="font-bold text-xs text-emerald-700">
-                          Jual: Rp {med.sellPrice.toLocaleString('id-ID')}
-                        </p>
-                      </div>
-                    </td>
-
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => handleOpenRestock(med)}
-                          className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold transition-colors flex items-center gap-1"
-                          title="Tambah Stok Masuk / Restock"
-                        >
-                          <PackagePlus className="w-3.5 h-3.5" />
-                          +Stok
-                        </button>
-                        <button
-                          onClick={() => handleOpenEdit(med)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                          title="Edit Obat"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => deleteMedicine(med.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                          title="Hapus Obat"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                            <PackagePlus className="w-3.5 h-3.5" />
+                            +Stok
+                          </button>
+                          <button
+                            onClick={() => handleOpenEdit(med)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                            title="Edit Obat"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => deleteMedicine(med.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                            title="Hapus Obat"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
+        </div>
+
+        {/* PAGINATION NUMBERING BAR */}
+        <div className="px-4 py-3 bg-slate-50/90 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          {/* Left info & items per page */}
+          <div className="flex flex-wrap items-center gap-3 text-slate-600">
+            <span>
+              Menampilkan <strong className="text-slate-900 font-bold">{startIndex} - {endIndex}</strong> dari{' '}
+              <strong className="text-slate-900 font-bold">{filteredMedicines.length}</strong> obat
+            </span>
+
+            <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
+              <span className="text-[11px] text-slate-500">Tampilkan:</span>
+              <select
+                id="select-items-per-page"
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 focus:outline-none focus:border-emerald-500 shadow-2xs"
+              >
+                <option value={5}>5 per hal</option>
+                <option value={10}>10 per hal</option>
+                <option value={20}>20 per hal</option>
+                <option value={50}>50 per hal</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Right numbering pagination controls */}
+          <div className="flex items-center gap-1">
+            {/* First page button */}
+            <button
+              id="btn-page-first"
+              type="button"
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-2xs"
+              title="Halaman Pertama (1)"
+            >
+              <ChevronsLeft className="w-4 h-4" />
+            </button>
+
+            {/* Previous page button */}
+            <button
+              id="btn-page-prev"
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-semibold text-xs shadow-2xs"
+              title="Halaman Sebelumnya"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Sebelumnya</span>
+            </button>
+
+            {/* Numbered Page Buttons */}
+            <div className="flex items-center gap-1 mx-1">
+              {getPageNumbers().map((p, idx) => {
+                if (p === '...') {
+                  return (
+                    <span key={`ellipsis-${idx}`} className="px-1.5 text-slate-400 font-bold text-xs select-none">
+                      ...
+                    </span>
+                  );
+                }
+                const pageNum = p as number;
+                const isActive = pageNum === currentPage;
+                return (
+                  <button
+                    key={pageNum}
+                    id={`btn-page-${pageNum}`}
+                    type="button"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`min-w-8 h-8 px-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center ${
+                      isActive
+                        ? 'bg-emerald-600 text-white shadow-xs scale-105'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300 shadow-2xs'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Next page button */}
+            <button
+              id="btn-page-next"
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-semibold text-xs shadow-2xs"
+              title="Halaman Berikutnya"
+            >
+              <span className="hidden md:inline">Berikutnya</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Last page button */}
+            <button
+              id="btn-page-last"
+              type="button"
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-2xs"
+              title={`Halaman Terakhir (${totalPages})`}
+            >
+              <ChevronsRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
