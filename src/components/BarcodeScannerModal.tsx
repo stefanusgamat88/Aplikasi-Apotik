@@ -1,14 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera, Check, Search, Volume2, X } from 'lucide-react';
+import { Camera, Check, Search, Volume2, X, Printer } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { BarcodePrintModal } from './BarcodePrintModal';
 
 export const BarcodeScannerModal: React.FC = () => {
-  const { isScannerOpen, closeScanner, onBarcodeScanned, medicines } = useApp();
+  const { isScannerOpen, closeScanner, onBarcodeScanned, medicines, settings } = useApp();
   const [manualCode, setManualCode] = useState('');
   const [scanStatus, setScanStatus] = useState<'idle' | 'success' | 'not_found'>('idle');
   const [scannedItemName, setScannedItemName] = useState('');
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState('');
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -212,12 +214,23 @@ export const BarcodeScannerModal: React.FC = () => {
             </button>
           </form>
 
-          {/* Quick Barcode Simulation Buttons */}
+          {/* Quick Barcode Simulation Buttons & Print Sheet Link */}
           <div>
-            <p className="text-[11px] font-semibold text-slate-500 mb-1.5 flex items-center gap-1">
-              <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
-              Simulasi Cepat Barcode Obat:
-            </p>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
+                <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
+                Simulasi Cepat Barcode Obat:
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowPrintModal(true)}
+                className="text-[10px] text-emerald-700 hover:text-emerald-800 font-bold hover:underline flex items-center gap-1"
+                title="Buka Lembar Barcode Siap Cetak"
+              >
+                <Printer className="w-3 h-3" />
+                <span>Cetak Lembar Barcode</span>
+              </button>
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {medicines.slice(0, 6).map((med) => (
                 <button
@@ -235,15 +248,31 @@ export const BarcodeScannerModal: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="p-3 bg-white border-t border-slate-100 text-center">
+        <div className="p-3 bg-white border-t border-slate-100 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setShowPrintModal(true)}
+            className="flex-1 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+          >
+            <Printer className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Katalog Barcode</span>
+          </button>
           <button
             onClick={closeScanner}
-            className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 transition-colors"
+            className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 transition-colors"
           >
-            Selesai Scanning
+            Tutup
           </button>
         </div>
       </div>
+
+      {/* Barcode Print Modal */}
+      <BarcodePrintModal
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        medicines={medicines}
+        settings={settings}
+      />
     </div>
   );
 };
