@@ -19,6 +19,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { Medicine, MedicineUnit } from '../types';
 import { getAutomaticMedicineImage, MEDICINE_IMAGE_PRESETS } from '../utils/medicineImageMatcher';
+import { detectActiveIngredient } from '../utils/medicineKnowledgeBase';
 
 export const MedicinesView: React.FC = () => {
   const {
@@ -49,6 +50,7 @@ export const MedicinesView: React.FC = () => {
   // Form Fields for Add/Edit
   const [name, setName] = useState('');
   const [genericName, setGenericName] = useState('');
+  const [isGenericManuallyEdited, setIsGenericManuallyEdited] = useState(false);
   const [sku, setSku] = useState('');
   const [barcode, setBarcode] = useState('');
   const [category, setCategory] = useState('Obat Bebas');
@@ -73,6 +75,34 @@ export const MedicinesView: React.FC = () => {
   // Dynamic Image & Icon Auto-Matcher state
   const [imageUrl, setImageUrl] = useState<string>('');
   const [isManualImage, setIsManualImage] = useState<boolean>(false);
+
+  // Auto-resolve active pharmaceutical ingredient based on medicine name
+  const detectedIngredient = useMemo(() => {
+    return detectActiveIngredient(name);
+  }, [name]);
+
+  // Handle name input change with smart auto-detection
+  const handleNameChange = (newName: string) => {
+    setName(newName);
+    if (!isGenericManuallyEdited || !genericName.trim()) {
+      const detected = detectActiveIngredient(newName);
+      if (detected) {
+        setGenericName(detected.genericName);
+        if (detected.indication && (!indication.trim() || indication === '')) {
+          setIndication(detected.indication);
+        }
+        if (detected.category) {
+          setCategory(detected.category);
+        }
+        if (detected.baseUnit) {
+          setBaseUnit(detected.baseUnit);
+        }
+        if (detected.requiresPrescription !== undefined) {
+          setRequiresPrescription(detected.requiresPrescription);
+        }
+      }
+    }
+  };
 
   // Auto-resolve image whenever name, category, or baseUnit changes
   const autoMatched = useMemo(() => {
@@ -129,6 +159,7 @@ export const MedicinesView: React.FC = () => {
     setHasStrip(true);
     setHasBox(true);
     setIsManualImage(false);
+    setIsGenericManuallyEdited(false);
     setImageUrl(getAutomaticMedicineImage('', 'Obat Bebas', 'Tablet').imageUrl);
     setIsModalOpen(true);
   };
@@ -137,6 +168,7 @@ export const MedicinesView: React.FC = () => {
     setEditingId(med.id);
     setName(med.name);
     setGenericName(med.genericName);
+    setIsGenericManuallyEdited(true);
     setSku(med.sku);
     setBarcode(med.barcode);
     setCategory(med.category);
@@ -483,27 +515,74 @@ export const MedicinesView: React.FC = () => {
             <form onSubmit={handleSaveMedicine} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Nama Dagang Obat *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-700">Nama Dagang Obat *</label>
+                    <span className="text-[10px] text-slate-400">Ketik merk / nama obat</span>
+                  </div>
                   <input
                     type="text"
                     required
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Contoh: Paracetamol 500 mg"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl"
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    placeholder="Contoh: Antasida, Promag, Sanmol, Amoxicillin..."
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-emerald-500 focus:outline-none font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Nama Zat Aktif / Generik *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-700 flex items-center gap-1.5">
+                      <span>Nama Zat Aktif / Generik *</span>
+                      {detectedIngredient && (
+                        <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                          <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
+                          Otomatis
+                        </span>
+                      )}
+                    </label>
+                    {name.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const detected = detectActiveIngredient(name);
+                          if (detected) {
+                            setGenericName(detected.genericName);
+                            if (detected.indication) setIndication(detected.indication);
+                            if (detected.category) setCategory(detected.category);
+                            if (detected.baseUnit) setBaseUnit(detected.baseUnit);
+                            if (detected.requiresPrescription !== undefined) setRequiresPrescription(detected.requiresPrescription);
+                            setIsGenericManuallyEdited(false);
+                          }
+                        }}
+                        className="text-[10px] text-emerald-700 hover:text-emerald-800 font-bold hover:underline flex items-center gap-1"
+                        title="Deteksi ulang zat aktif dari nama obat"
+                      >
+                        <RefreshCw className="w-2.5 h-2.5" />
+                        Deteksi Ulang
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="text"
                     required
                     value={genericName}
-                    onChange={(e) => setGenericName(e.target.value)}
-                    placeholder="Contoh: Paracetamol"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl"
+                    onChange={(e) => {
+                      setGenericName(e.target.value);
+                      setIsGenericManuallyEdited(true);
+                    }}
+                    placeholder="Otomatis terisi dari nama obat..."
+                    className={`w-full px-3 py-2 border rounded-xl focus:outline-none transition-colors font-medium text-slate-800 ${
+                      detectedIngredient
+                        ? 'bg-emerald-50/40 border-emerald-300 focus:border-emerald-500'
+                        : 'border-slate-300 focus:border-emerald-500'
+                    }`}
                   />
+                  {detectedIngredient && (
+                    <p className="text-[10px] text-emerald-700 font-medium mt-1 flex items-center gap-1 leading-tight">
+                      <Sparkles className="w-3 h-3 text-emerald-600 shrink-0" />
+                      Zat aktif terdeteksi otomatis dari nama "{name}"
+                    </p>
+                  )}
                 </div>
 
                 <div>
