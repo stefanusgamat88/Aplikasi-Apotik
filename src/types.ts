@@ -165,6 +165,60 @@ export interface AuditLog {
   type: 'auth' | 'sale' | 'stock' | 'system' | 'void';
 }
 
+export interface AutoBackupConfig {
+  enabled: boolean;
+  frequency: 'daily' | 'weekly' | 'both';
+  autoDownloadFile: boolean; // Unduh otomatis file .json ke penyimpanan lokal/PC
+  keepDaysCount: number; // Jumlah riwayat harian yang disimpan (cth: 7 hari)
+  keepWeeksCount: number; // Jumlah riwayat mingguan yang disimpan (cth: 4 minggu)
+  lastDailyDate?: string; // Format YYYY-MM-DD
+  lastWeeklyDate?: string; // Format YYYY-Www
+  lastBackupTimestamp?: string;
+  lastBackupType?: 'daily' | 'weekly' | 'manual';
+}
+
+export type BackupSnapshotType = 'daily' | 'weekly' | 'manual';
+
+export interface BackupSnapshotSummary {
+  medicinesCount: number;
+  transactionsCount: number;
+  stockMovementsCount: number;
+  customersCount: number;
+  suppliersCount: number;
+  usersCount: number;
+  totalRevenue: number;
+  sizeBytes: number;
+  sizeFormatted: string;
+}
+
+export interface BackupSnapshot {
+  id: string;
+  type: BackupSnapshotType;
+  title: string;
+  createdAt: string; // ISO string
+  displayTime: string; // e.g. "Minggu, 27 Sep 2026, 09:45 WIB"
+  dateTag: string; // "2026-09-27"
+  weekTag: string; // "2026-W39"
+  summary: BackupSnapshotSummary;
+  data: {
+    app: string;
+    version: string;
+    timestamp: string;
+    pharmacist: string;
+    pharmacyName: string;
+    data: {
+      medicines: Medicine[];
+      suppliers: Supplier[];
+      customers: Customer[];
+      transactions: Transaction[];
+      stockMovements: StockMovement[];
+      settings: PharmacySettings;
+      auditLogs: AuditLog[];
+      users: User[];
+    };
+  };
+}
+
 export interface PharmacySettings {
   pharmacyName: string;
   pharmacyTagline: string;
@@ -181,4 +235,6 @@ export interface PharmacySettings {
   activeBranch: string;
   branches: { id: string; name: string; address: string }[];
   transactionLimit: number; // e.g. 150 trial / plan
+  autoBackup?: AutoBackupConfig;
 }
+

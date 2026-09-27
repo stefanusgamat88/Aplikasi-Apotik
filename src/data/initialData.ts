@@ -478,6 +478,15 @@ export const INITIAL_SETTINGS: PharmacySettings = {
     { id: 'branch-2', name: 'Cabang Thamrin Express', address: 'Jl. M.H. Thamrin No. 12' },
   ],
   transactionLimit: 150,
+  autoBackup: {
+    enabled: true,
+    frequency: 'both',
+    autoDownloadFile: false,
+    keepDaysCount: 7,
+    keepWeeksCount: 4,
+    lastDailyDate: '',
+    lastWeeklyDate: '',
+  },
 };
 
 export const INITIAL_TRANSACTIONS: Transaction[] = [

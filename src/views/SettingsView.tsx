@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { AutoBackupManagerCard } from '../components/AutoBackupManagerCard';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -179,6 +180,9 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* SECTION: Sistem Cadangan Otomatis Harian & Mingguan */}
+      <AutoBackupManagerCard />
 
       {/* SECTION: Backup & Restore Data JSON Secara Berkala */}
       <div className="bg-gradient-to-br from-white to-slate-50 p-6 rounded-3xl border border-emerald-100 shadow-xs space-y-4">

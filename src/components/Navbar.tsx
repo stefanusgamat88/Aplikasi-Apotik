@@ -163,6 +163,17 @@ export const Navbar: React.FC = () => {
             )}
           </div>
 
+          {/* Auto-Backup Safety Indicator */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('settings')}
+            className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50/70 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/60 text-xs font-semibold transition-all cursor-pointer"
+            title="Sistem Cadangan Otomatis Harian & Mingguan Aktif. Klik untuk kelola riwayat cadangan."
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Cadangan: Aman</span>
+          </button>
+
           {/* Notification Bell Dropdown */}
           <div className="relative">
             <button

@@ -12,6 +12,8 @@ import {
 } from '../data/initialData';
 import {
   AuditLog,
+  AutoBackupConfig,
+  BackupSnapshot,
   CartItem,
   Category,
   Customer,
@@ -25,6 +27,15 @@ import {
   User,
 } from '../types';
 import { getAutomaticMedicineImage } from '../utils/medicineImageMatcher';
+import {
+  checkAndPerformScheduledBackup,
+  getAllBackupSnapshots,
+  saveBackupSnapshot,
+  buildSnapshotObject,
+  deleteBackupSnapshot,
+  downloadBackupSnapshotJSON,
+  getBackupSnapshotById,
+} from '../utils/autoBackupService';
 
 interface AppContextType {
   currentUser: User;
@@ -88,6 +99,17 @@ interface AppContextType {
   resetDemoData: () => { success: boolean; message: string };
   exportBackupJSON: () => void;
   importBackupJSON: (jsonData: string) => { success: boolean; message: string };
+  // Automated Daily & Weekly Backup System
+  backupsList: BackupSnapshot[];
+  isLoadingBackups: boolean;
+  refreshBackupsList: () => Promise<void>;
+  createManualSnapshot: () => Promise<{ success: boolean; message: string }>;
+  restoreFromSnapshot: (snapshotId: string) => Promise<{ success: boolean; message: string }>;
+  downloadSnapshot: (snapshotId: string) => Promise<boolean>;
+  deleteSnapshot: (snapshotId: string) => Promise<boolean>;
+  updateAutoBackupConfig: (updates: Partial<AutoBackupConfig>) => void;
+  autoBackupNotification: { type: 'daily' | 'weekly'; title: string; time: string } | null;
+  dismissAutoBackupNotification: () => void;
   // Profile Photo Management
   isPhotoModalOpen: boolean;
   openPhotoModal: () => void;
@@ -215,6 +237,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline'>('synced');
+  
+  // Automated daily & weekly backup state
+  const [backupsList, setBackupsList] = useState<BackupSnapshot[]>([]);
+  const [isLoadingBackups, setIsLoadingBackups] = useState<boolean>(true);
+  const [autoBackupNotification, setAutoBackupNotification] = useState<{
+    type: 'daily' | 'weekly';
+    title: string;
+    time: string;
+  } | null>(null);
 
   // Listen to network status
   useEffect(() => {
@@ -805,6 +836,171 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Automated Backup Service Operations
+  const refreshBackupsList = async () => {
+    setIsLoadingBackups(true);
+    try {
+      const list = await getAllBackupSnapshots();
+      setBackupsList(list);
+    } catch (e) {
+      console.error('Error fetching backups list:', e);
+    } finally {
+      setIsLoadingBackups(false);
+    }
+  };
+
+  const createManualSnapshot = async (): Promise<{ success: boolean; message: string }> => {
+    try {
+      const snapshot = buildSnapshotObject({
+        type: 'manual',
+        medicines,
+        suppliers,
+        customers,
+        transactions,
+        stockMovements,
+        settings,
+        users,
+        auditLogs,
+      });
+
+      await saveBackupSnapshot(snapshot);
+      await refreshBackupsList();
+      addAuditLog('Backup Manual', `Snapshot cadangan manual berhasil dibuat (${snapshot.summary.sizeFormatted})`, 'system');
+      return { success: true, message: `Snapshot cadangan mandiri berhasil dibuat (${snapshot.summary.sizeFormatted})!` };
+    } catch (err: any) {
+      return { success: false, message: 'Gagal membuat snapshot: ' + (err?.message || 'Error tidak diketahui') };
+    }
+  };
+
+  const restoreFromSnapshot = async (snapshotId: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const snapshot = await getBackupSnapshotById(snapshotId);
+      if (!snapshot || !snapshot.data?.data) {
+        return { success: false, message: 'Data cadangan tidak ditemukan atau berkas rusak.' };
+      }
+
+      const d = snapshot.data.data;
+      if (d.medicines && Array.isArray(d.medicines)) setMedicines(d.medicines);
+      if (d.suppliers && Array.isArray(d.suppliers)) setSuppliers(d.suppliers);
+      if (d.customers && Array.isArray(d.customers)) setCustomers(d.customers);
+      if (d.transactions && Array.isArray(d.transactions)) setTransactions(d.transactions);
+      if (d.stockMovements && Array.isArray(d.stockMovements)) setStockMovements(d.stockMovements);
+      if (d.settings) setSettings(d.settings);
+      if (d.users && Array.isArray(d.users)) setUsers(d.users);
+      if (d.auditLogs && Array.isArray(d.auditLogs)) setAuditLogs(d.auditLogs);
+
+      addAuditLog('Restore Backup Otomatis', `Data dipulihkan dari cadangan: ${snapshot.title}`, 'system');
+      return { success: true, message: `Berhasil memulihkan database dari ${snapshot.title}!` };
+    } catch (err: any) {
+      return { success: false, message: 'Gagal memulihkan cadangan: ' + (err?.message || 'Kesalahan sistem') };
+    }
+  };
+
+  const downloadSnapshot = async (snapshotId: string): Promise<boolean> => {
+    const snapshot = await getBackupSnapshotById(snapshotId);
+    if (!snapshot) return false;
+    downloadBackupSnapshotJSON(snapshot);
+    addAuditLog('Download Cadangan JSON', `Mengunduh berkas cadangan: ${snapshot.title}`, 'system');
+    return true;
+  };
+
+  const deleteSnapshot = async (snapshotId: string): Promise<boolean> => {
+    try {
+      await deleteBackupSnapshot(snapshotId);
+      await refreshBackupsList();
+      addAuditLog('Hapus Cadangan', `Snapshot cadangan ${snapshotId} dihapus`, 'system');
+      return true;
+    } catch (err) {
+      console.error('Gagal menghapus snapshot:', err);
+      return false;
+    }
+  };
+
+  const updateAutoBackupConfig = (updates: Partial<AutoBackupConfig>) => {
+    setSettings((prev) => {
+      const existing: AutoBackupConfig = prev.autoBackup || {
+        enabled: true,
+        frequency: 'both',
+        autoDownloadFile: false,
+        keepDaysCount: 7,
+        keepWeeksCount: 4,
+        lastDailyDate: '',
+        lastWeeklyDate: '',
+      };
+      const updated: AutoBackupConfig = { ...existing, ...updates };
+      return { ...prev, autoBackup: updated };
+    });
+    addAuditLog('Ubah Konfigurasi Backup', 'Pengaturan jadwal backup otomatis diperbarui', 'system');
+  };
+
+  const dismissAutoBackupNotification = () => {
+    setAutoBackupNotification(null);
+  };
+
+  // Check and run scheduled backup on system mount
+  useEffect(() => {
+    let isMounted = true;
+    const runScheduledCheck = async () => {
+      const currentConfig: AutoBackupConfig = settings.autoBackup || {
+        enabled: true,
+        frequency: 'both',
+        autoDownloadFile: false,
+        keepDaysCount: 7,
+        keepWeeksCount: 4,
+        lastDailyDate: '',
+        lastWeeklyDate: '',
+      };
+
+      try {
+        const result = await checkAndPerformScheduledBackup({
+          config: currentConfig,
+          medicines,
+          suppliers,
+          customers,
+          transactions,
+          stockMovements,
+          settings,
+          users,
+          auditLogs,
+        });
+
+        if (result.createdDaily || result.createdWeekly) {
+          if (isMounted) {
+            setSettings((prev) => ({
+              ...prev,
+              autoBackup: result.updatedConfig,
+            }));
+
+            const created = result.createdDaily || result.createdWeekly;
+            if (created) {
+              setAutoBackupNotification({
+                type: result.createdDaily ? 'daily' : 'weekly',
+                title: created.title,
+                time: created.displayTime,
+              });
+              addAuditLog(
+                result.createdDaily ? 'Backup Otomatis Harian' : 'Backup Otomatis Mingguan',
+                `Cadangan otomatis tersimpan (${medicines.length} obat, ${transactions.length} transaksi)`,
+                'system'
+              );
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error running auto-backup check:', err);
+      } finally {
+        if (isMounted) {
+          refreshBackupsList();
+        }
+      }
+    };
+
+    runScheduledCheck();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Authentication & Session Operations
   const login = (
     identifier: string,
@@ -1203,6 +1399,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetDemoData,
         exportBackupJSON,
         importBackupJSON,
+        // Automated Backup System
+        backupsList,
+        isLoadingBackups,
+        refreshBackupsList,
+        createManualSnapshot,
+        restoreFromSnapshot,
+        downloadSnapshot,
+        deleteSnapshot,
+        updateAutoBackupConfig,
+        autoBackupNotification,
+        dismissAutoBackupNotification,
         smartInsights: {
           lowStockItems,
           nearExpiryItems,
