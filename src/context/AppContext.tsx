@@ -24,6 +24,7 @@ import {
   Transaction,
   User,
 } from '../types';
+import { getAutomaticMedicineImage } from '../utils/medicineImageMatcher';
 
 interface AppContextType {
   currentUser: User;
@@ -607,8 +608,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Medicine operations
   const addMedicine = (medicineData: Omit<Medicine, 'id' | 'totalSold'>) => {
+    const autoImg = getAutomaticMedicineImage(
+      medicineData.name,
+      medicineData.category,
+      medicineData.baseUnit,
+      medicineData.indication
+    ).imageUrl;
+
+    const finalImage =
+      medicineData.imageUrl &&
+      medicineData.imageUrl.trim() &&
+      !medicineData.imageUrl.includes('photo-1584308666744-24d5c474f2ae')
+        ? medicineData.imageUrl
+        : autoImg;
+
     const newMed: Medicine = {
       ...medicineData,
+      imageUrl: finalImage,
       id: 'med-' + Date.now(),
       totalSold: 0,
     };

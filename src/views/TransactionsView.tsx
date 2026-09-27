@@ -13,12 +13,14 @@ import {
   Eye,
   FileSpreadsheet,
   FileText,
+  Filter,
   Printer,
   RotateCcw,
   Search,
   Trash2,
   TrendingUp,
   User,
+  X,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Transaction } from '../types';
@@ -30,12 +32,17 @@ import {
 import { exportTransactionsRegisterXLSX } from '../utils/reportExcelGenerator';
 
 export const TransactionsView: React.FC = () => {
-  const { transactions, openReceipt, voidTransaction, currentUser, openSupervisorPrompt, settings } = useApp();
+  const { transactions, openReceipt, voidTransaction, currentUser, openSupervisorPrompt, settings, customers } = useApp();
 
+  // Audit Filter States
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'voided'>('all');
   const [filterMethod, setFilterMethod] = useState('all');
-  const [dateFilter, setDateFilter] = useState<'all' | 'today' | '7days' | 'month'>('all');
+  const [datePreset, setDatePreset] = useState<'all' | 'today' | '7days' | 'month' | 'last_month' | 'custom'>('all');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
+  const [customerQuery, setCustomerQuery] = useState<string>('');
 
   // Accordion row expansion
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
@@ -44,33 +51,105 @@ export const TransactionsView: React.FC = () => {
   const [voidTarget, setVoidTarget] = useState<Transaction | null>(null);
   const [voidReason, setVoidReason] = useState('');
 
-  // Filter logic
+  // Handle Preset Date changes
+  const handleDatePresetChange = (preset: 'all' | 'today' | '7days' | 'month' | 'last_month' | 'custom') => {
+    setDatePreset(preset);
+    const today = '2026-09-22'; // system anchor date
+    if (preset === 'all') {
+      setStartDate('');
+      setEndDate('');
+    } else if (preset === 'today') {
+      setStartDate(today);
+      setEndDate(today);
+    } else if (preset === '7days') {
+      setStartDate('2026-09-15');
+      setEndDate(today);
+    } else if (preset === 'month') {
+      setStartDate('2026-09-01');
+      setEndDate('2026-09-30');
+    } else if (preset === 'last_month') {
+      setStartDate('2026-08-01');
+      setEndDate('2026-08-31');
+    }
+  };
+
+  const handleResetFilters = () => {
+    setSearch('');
+    setFilterStatus('all');
+    setFilterMethod('all');
+    setDatePreset('all');
+    setStartDate('');
+    setEndDate('');
+    setSelectedCustomer('all');
+    setCustomerQuery('');
+  };
+
+  // Distinct customer list for dropdown
+  const customerList = useMemo(() => {
+    const list = new Set<string>();
+    list.add('Pelanggan Umum');
+    transactions.forEach((t) => {
+      if (t.customerName?.trim()) list.add(t.customerName.trim());
+    });
+    customers.forEach((c) => {
+      if (c.name?.trim()) list.add(c.name.trim());
+    });
+    return Array.from(list).sort((a, b) => (a === 'Pelanggan Umum' ? -1 : b === 'Pelanggan Umum' ? 1 : a.localeCompare(b)));
+  }, [transactions, customers]);
+
+  // Filter logic: Date Range + Customer Name + Status + Method + Search
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t) => {
-      // Date filter
       const txDate = t.timestamp.slice(0, 10);
-      let matchDate = true;
-      if (dateFilter === 'today') {
-        matchDate = txDate === '2026-09-22';
-      } else if (dateFilter === '7days') {
-        matchDate = txDate >= '2026-09-15';
-      } else if (dateFilter === 'month') {
-        matchDate = txDate.startsWith('2026-09');
-      }
 
+      // 1. Date Range Filter
+      const matchStartDate = !startDate || txDate >= startDate;
+      const matchEndDate = !endDate || txDate <= endDate;
+
+      // 2. Customer Filter (Dropdown & Specific Customer Search)
+      const custName = t.customerName || 'Pelanggan Umum';
+      const matchSelectedCustomer =
+        selectedCustomer === 'all' ||
+        custName.toLowerCase() === selectedCustomer.toLowerCase();
+
+      const matchCustomerQuery =
+        !customerQuery.trim() ||
+        custName.toLowerCase().includes(customerQuery.toLowerCase().trim()) ||
+        (t.customerPhone && t.customerPhone.includes(customerQuery.trim()));
+
+      // 3. Status Filter
+      const matchStatus = filterStatus === 'all' || t.status === filterStatus;
+
+      // 4. Payment Method Filter
+      const matchMethod = filterMethod === 'all' || t.paymentMethod === filterMethod;
+
+      // 5. Keyword Search (Faktur, Kasir, Obat)
       const matchSearch =
         !search.trim() ||
         t.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
-        t.customerName.toLowerCase().includes(search.toLowerCase()) ||
         t.cashierName.toLowerCase().includes(search.toLowerCase()) ||
         t.items.some((it) => it.medicine.name.toLowerCase().includes(search.toLowerCase()));
 
-      const matchStatus = filterStatus === 'all' || t.status === filterStatus;
-      const matchMethod = filterMethod === 'all' || t.paymentMethod === filterMethod;
-
-      return matchDate && matchSearch && matchStatus && matchMethod;
+      return (
+        matchStartDate &&
+        matchEndDate &&
+        matchSelectedCustomer &&
+        matchCustomerQuery &&
+        matchStatus &&
+        matchMethod &&
+        matchSearch
+      );
     });
-  }, [transactions, search, filterStatus, filterMethod, dateFilter]);
+  }, [
+    transactions,
+    startDate,
+    endDate,
+    selectedCustomer,
+    customerQuery,
+    filterStatus,
+    filterMethod,
+    search,
+  ]);
 
   // Summary Metrics
   const summary = useMemo(() => {
@@ -119,10 +198,31 @@ export const TransactionsView: React.FC = () => {
     setVoidReason('');
   };
 
-  // Export PDF
+  // Export PDF with full audit context
   const handleExportPDF = () => {
+    let periodText = 'Seluruh Riwayat';
+    if (startDate && endDate) {
+      periodText = startDate === endDate ? `Tanggal ${startDate}` : `${startDate} s/d ${endDate}`;
+    } else if (startDate) {
+      periodText = `Mulai ${startDate}`;
+    } else if (endDate) {
+      periodText = `Sampai ${endDate}`;
+    } else if (datePreset === 'today') {
+      periodText = 'Hari Ini (22/09/2026)';
+    } else if (datePreset === '7days') {
+      periodText = '7 Hari Terakhir';
+    } else if (datePreset === 'month') {
+      periodText = 'Bulan September 2026';
+    }
+
+    if (selectedCustomer !== 'all') {
+      periodText += ` • Pelanggan: ${selectedCustomer}`;
+    } else if (customerQuery.trim()) {
+      periodText += ` • Pelanggan: "${customerQuery.trim()}"`;
+    }
+
     const filterInfo = {
-      periodLabel: dateFilter === 'today' ? 'Hari Ini' : dateFilter === '7days' ? '7 Hari Terakhir' : dateFilter === 'month' ? 'Bulan September 2026' : 'Seluruh Riwayat',
+      periodLabel: periodText,
       paymentMethod: filterMethod !== 'all' ? filterMethod : undefined,
       statusLabel: filterStatus === 'all' ? 'Semua' : filterStatus === 'completed' ? 'Lunas' : 'Void',
     };
@@ -142,16 +242,28 @@ export const TransactionsView: React.FC = () => {
     generateSalesReportPDF(filteredTransactions, settings, filterInfo, metricsData, currentUser.name);
   };
 
-  // Export Excel (.xlsx)
+  // Export Excel (.xlsx) with full audit context
   const handleExportXLSX = () => {
-    const periodLabel =
-      dateFilter === 'today'
-        ? 'Hari Ini'
-        : dateFilter === '7days'
-        ? '7 Hari Terakhir'
-        : dateFilter === 'month'
-        ? 'Bulan Ini'
-        : 'Seluruh Transaksi';
+    let periodLabel = 'Seluruh Transaksi';
+    if (startDate && endDate) {
+      periodLabel = startDate === endDate ? `Tanggal ${startDate}` : `${startDate} s/d ${endDate}`;
+    } else if (startDate) {
+      periodLabel = `Mulai ${startDate}`;
+    } else if (endDate) {
+      periodLabel = `Sampai ${endDate}`;
+    } else if (datePreset === 'today') {
+      periodLabel = 'Hari Ini (22/09/2026)';
+    } else if (datePreset === '7days') {
+      periodLabel = '7 Hari Terakhir';
+    } else if (datePreset === 'month') {
+      periodLabel = 'Bulan September 2026';
+    }
+
+    if (selectedCustomer !== 'all') {
+      periodLabel += ` (Pelanggan: ${selectedCustomer})`;
+    } else if (customerQuery.trim()) {
+      periodLabel += ` (Pelanggan: ${customerQuery.trim()})`;
+    }
 
     exportTransactionsRegisterXLSX(filteredTransactions, settings, periodLabel);
   };
@@ -268,89 +380,250 @@ export const TransactionsView: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. FILTER BAR */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-        <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
-          {/* Search box */}
-          <div className="relative w-full md:w-96">
+      {/* 3. AUDIT & FILTER TOOLBAR */}
+      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+              <Filter className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-slate-800">
+                Pencarian & Filter Audit Riwayat Transaksi
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Audit berdasarkan rentang tanggal dan nama pasien/pelanggan apotek.
+              </p>
+            </div>
+          </div>
+
+          {/* Preset Date Chips */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+              Periode:
+            </span>
+            {[
+              { id: 'all', label: 'Semua' },
+              { id: 'today', label: 'Hari Ini' },
+              { id: '7days', label: '7 Hari' },
+              { id: 'month', label: 'Bulan Ini' },
+              { id: 'last_month', label: 'Bulan Lalu' },
+            ].map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => handleDatePresetChange(p.id as any)}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                  datePreset === p.id
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-slate-50 text-slate-600 hover:bg-slate-200 border border-slate-200/80'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Primary Filter Grid: Date Range & Customer */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3 text-xs">
+          {/* Rentang Tanggal Filter */}
+          <div className="lg:col-span-5 bg-slate-50/80 p-3 rounded-2xl border border-slate-200 space-y-1.5">
+            <label className="font-bold text-slate-700 flex items-center gap-1.5 text-[11px]">
+              <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+              Rentang Tanggal Transaksi:
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                id="filter-start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setDatePreset('custom');
+                }}
+                className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-slate-700 font-semibold focus:outline-none focus:border-emerald-500"
+              />
+              <span className="text-slate-400 font-bold shrink-0">s/d</span>
+              <input
+                id="filter-end-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setDatePreset('custom');
+                }}
+                className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-slate-700 font-semibold focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          {/* Filter Nama Pelanggan / Pasien */}
+          <div className="lg:col-span-4 bg-slate-50/80 p-3 rounded-2xl border border-slate-200 space-y-1.5">
+            <label className="font-bold text-slate-700 flex items-center justify-between text-[11px]">
+              <span className="flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-sky-600" />
+                Nama Pelanggan / Pasien:
+              </span>
+              {selectedCustomer !== 'all' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCustomer('all')}
+                  className="text-rose-600 hover:underline text-[10px]"
+                >
+                  Semua
+                </button>
+              )}
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                <input
+                  id="filter-customer-query"
+                  type="text"
+                  value={customerQuery}
+                  onChange={(e) => setCustomerQuery(e.target.value)}
+                  placeholder="Ketik nama / HP..."
+                  className="w-full pl-8 pr-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-slate-700 font-medium focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <select
+                id="filter-customer-select"
+                value={selectedCustomer}
+                onChange={(e) => setSelectedCustomer(e.target.value)}
+                className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-slate-700 font-medium focus:outline-none focus:border-emerald-500 truncate"
+              >
+                <option value="all">Semua Pasien</option>
+                {customerList.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Secondary Filters: Status & Metode */}
+          <div className="lg:col-span-3 bg-slate-50/80 p-3 rounded-2xl border border-slate-200 space-y-1.5">
+            <label className="font-bold text-slate-700 block text-[11px]">
+              Status & Metode Bayar:
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
+                className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-slate-700 font-medium focus:outline-none focus:border-emerald-500"
+              >
+                <option value="all">Semua Status</option>
+                <option value="completed">Lunas</option>
+                <option value="voided">Void</option>
+              </select>
+
+              <select
+                value={filterMethod}
+                onChange={(e) => setFilterMethod(e.target.value)}
+                className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-slate-700 font-medium focus:outline-none focus:border-emerald-500"
+              >
+                <option value="all">Metode</option>
+                <option value="cash">Tunai</option>
+                <option value="qris">QRIS</option>
+                <option value="dana">DANA</option>
+                <option value="debit">Debit</option>
+                <option value="transfer">Transfer</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Global Keyword Search & Reset Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+          <div className="relative w-full sm:w-96">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari no. faktur, nama pasien, kasir, obat..."
+              placeholder="Cari no. faktur, kasir, atau nama obat..."
               className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:outline-none focus:border-emerald-500 font-medium"
             />
           </div>
 
-          {/* Quick Date Buttons & Dropdowns */}
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            {/* Date filter preset */}
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl text-xs">
-              <button
-                type="button"
-                onClick={() => setDateFilter('all')}
-                className={`px-2.5 py-1.5 rounded-lg font-bold transition-all ${
-                  dateFilter === 'all' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                Semua
-              </button>
-              <button
-                type="button"
-                onClick={() => setDateFilter('today')}
-                className={`px-2.5 py-1.5 rounded-lg font-bold transition-all ${
-                  dateFilter === 'today' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                Hari Ini
-              </button>
-              <button
-                type="button"
-                onClick={() => setDateFilter('7days')}
-                className={`px-2.5 py-1.5 rounded-lg font-bold transition-all ${
-                  dateFilter === '7days' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                7 Hari
-              </button>
-              <button
-                type="button"
-                onClick={() => setDateFilter('month')}
-                className={`px-2.5 py-1.5 rounded-lg font-bold transition-all ${
-                  dateFilter === 'month' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                Bulan Ini
-              </button>
-            </div>
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            <span className="text-xs text-slate-500 font-medium">
+              Menampilkan <strong>{filteredTransactions.length}</strong> dari {transactions.length} faktur
+            </span>
 
-            {/* Status filter */}
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
-              className="text-xs bg-slate-50 border border-slate-300 rounded-xl py-2 px-3 text-slate-700 font-semibold focus:outline-none focus:border-emerald-500"
-            >
-              <option value="all">Semua Status</option>
-              <option value="completed">Selesai / Lunas</option>
-              <option value="voided">Dibatalkan (Void)</option>
-            </select>
-
-            {/* Payment method filter */}
-            <select
-              value={filterMethod}
-              onChange={(e) => setFilterMethod(e.target.value)}
-              className="text-xs bg-slate-50 border border-slate-300 rounded-xl py-2 px-3 text-slate-700 font-semibold focus:outline-none focus:border-emerald-500"
-            >
-              <option value="all">Semua Metode</option>
-              <option value="cash">Tunai (Cash)</option>
-              <option value="qris">QRIS</option>
-              <option value="dana">DANA</option>
-              <option value="debit">Kartu Debit</option>
-              <option value="transfer">Transfer</option>
-            </select>
+            {(startDate ||
+              endDate ||
+              datePreset !== 'all' ||
+              selectedCustomer !== 'all' ||
+              customerQuery.trim() ||
+              filterStatus !== 'all' ||
+              filterMethod !== 'all' ||
+              search.trim()) && (
+              <button
+                id="btn-reset-audit-filter"
+                type="button"
+                onClick={handleResetFilters}
+                className="px-3 py-1.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-colors flex items-center gap-1.5 shrink-0"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset Filter</span>
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Active Audit Filter Highlight Banner */}
+        {(startDate ||
+          endDate ||
+          selectedCustomer !== 'all' ||
+          customerQuery.trim() ||
+          filterStatus !== 'all' ||
+          filterMethod !== 'all') && (
+          <div className="p-3 bg-emerald-50/80 border border-emerald-200/90 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs animate-in fade-in">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-bold text-emerald-950 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                Filter Audit Aktif:
+              </span>
+              {(startDate || endDate) && (
+                <span className="px-2.5 py-1 rounded-xl bg-white text-emerald-800 font-bold border border-emerald-200 text-[11px] shadow-2xs">
+                  📅 Periode: {startDate || 'Awal'} s/d {endDate || 'Hari ini'}
+                </span>
+              )}
+              {selectedCustomer !== 'all' && (
+                <span className="px-2.5 py-1 rounded-xl bg-white text-sky-800 font-bold border border-sky-200 text-[11px] shadow-2xs">
+                  👤 Pelanggan: {selectedCustomer}
+                </span>
+              )}
+              {customerQuery.trim() && (
+                <span className="px-2.5 py-1 rounded-xl bg-white text-slate-800 font-bold border border-slate-200 text-[11px] shadow-2xs">
+                  🔎 Cari Pasien: "{customerQuery.trim()}"
+                </span>
+              )}
+              {filterStatus !== 'all' && (
+                <span className="px-2 py-0.5 rounded-lg bg-white text-slate-700 font-bold border border-slate-200 text-[11px]">
+                  Status: {filterStatus === 'completed' ? 'Lunas' : 'Void'}
+                </span>
+              )}
+              {filterMethod !== 'all' && (
+                <span className="px-2 py-0.5 rounded-lg bg-white text-slate-700 font-bold border border-slate-200 text-[11px] uppercase">
+                  Metode: {filterMethod}
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="text-rose-600 hover:text-rose-700 font-bold text-xs hover:underline flex items-center gap-1"
+            >
+              <X className="w-3.5 h-3.5" />
+              Hapus Filter
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 4. TRANSACTIONS TABLE */}
